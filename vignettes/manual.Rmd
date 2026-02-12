@@ -6,7 +6,7 @@ description: >
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{aNCA Manual: Technical Reference}
-  %\VignetteEngine{knitr::knitr}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -664,7 +664,7 @@ results <- pk.nca(pknca_data)
 
 ## Further Reading
 
-- Denney, W. S., Duvvuri, S., & Buckeridge, C. (2015). Simple, Automatic Noncompartmental Analysis: The PKNCA R Package. *Journal of Pharmacokinetics and Pharmacodynamics*, 42(1), 11-107. https://doi.org/10.1007/s10928-015-9432-2
+- Denney, W. S., Duvvuri, S., & Buckeridge, C. (2015). Simple, Automatic Noncompartmental Analysis: The PKNCA R Package. *Journal of Pharmacokinetics and Pharmacodynamics*, 42(1), 11-17. https://doi.org/10.1007/s10928-015-9432-2
 
 - Gabrielsson, J., & Weiner, D. (2001). *Pharmacokinetic and Pharmacodynamic Data Analysis: Concepts and Applications* (3rd ed.). Swedish Pharmaceutical Press.
 
