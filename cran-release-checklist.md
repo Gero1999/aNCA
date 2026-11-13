@@ -12,8 +12,6 @@ entries are grouped under 0.2.0; no internal tooling changes were added to NEWS.
 - NCA calculations, public functions, settings, and exported data are unchanged.
 - Optional test dependencies are guarded individually. Full-dependency checks
   still execute those tests; an absent package does not disable the whole suite.
-- The manual CRAN release workflow installs all suggested packages, uses CRAN
-  dependency releases, enables incoming checks, and fails on notes.
 
 ## Reproduce validation
 
@@ -52,8 +50,8 @@ were explicitly skipped. The packages were restored after the test.
 
 Before submitting:
 
-- Run the manual `CRAN release check` workflow on this branch after it is available
-  in GitHub Actions; review Linux, macOS, Windows, and R-devel results.
+- Run release checks with all suggested packages and incoming checks enabled
+  on Linux, macOS, Windows, and R-devel; review the results before submission.
 - Repeat remote incoming/URL checks on a network that permits CRAN. This cloud
   environment blocks CRAN and Bioconductor endpoints and cannot verify current
   time through R's remote time service; do not suppress these checks for release.

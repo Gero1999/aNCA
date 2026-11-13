@@ -29,7 +29,7 @@ roxygen generation completed without findings or warnings.
 
 ## Before submission
 
-Run the strict CRAN release workflow on Linux, Windows, macOS, and R-devel;
+Run release checks on Linux, Windows, macOS, and R-devel;
 repeat remote incoming checks on a CRAN-capable network, and
 replace these candidate results with the final submission evidence. Scientific
 acceptance testing for the accumulated changes since 0.1.0 remains a maintainer
