@@ -41,7 +41,7 @@
 
 ## Exports & CDISC
 
-* **ZIP exports:** Export results, settings, plots, and TLGs using current selections, with PDF/HTML/PNG graphs, XLSX/CSV/PDF tables, study-based filenames, a manifest of output statuses, and working validation in installed packages (#638, #1000, #1136, #1344, #1428, #1476).
+* **ZIP exports:** Export results, settings, plots, and TLGs using current selections, with PDF/HTML/PNG graphs, XLSX/CSV/PDF tables, study-based filenames, a manifest of output statuses, and working validation in installed packages and progress indicators that close after success or failure (#638, #1000, #1136, #1344, #1428, #1476).
 * **Slides:** Customize slide sections and grouping, include dose-normalized summaries, and add a PK parameter glossary (#791, #972, #1054, #1326).
 * **Reproducible scripts:** Export R scripts that use saved mappings, filters, ratios, units, and BLQ rules to reproduce app results, honor the requested dataset path or bundled ZIP input, request explicit installation when aNCA is missing, and run without configured ratios (#789, #1189, #1445, #1476).
 * **Export validation:** Validate selected non-TLG exports and CDISC field types and lengths before saving, report custom-field validation limits, and block exports on validation or XPT-writing failures (#1452).
