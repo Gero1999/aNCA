@@ -50,10 +50,8 @@ page_and_searcher_server <- function(id, search_subject, plot_outputs, plots_per
       if (is.null(search_val) || length(search_val) == 0) {
         rep(TRUE, length(names(plot_outputs())))
       } else {
-        grepl(
-          paste0("USUBJID=(", paste0(search_val, collapse = ")|("), ")"),
-          names(plot_outputs())
-        )
+        subjects <- vapply(plot_outputs(), attr, character(1), which = "anca_subject")
+        subjects %in% search_val
       }
     })
 
@@ -93,7 +91,7 @@ page_and_searcher_server <- function(id, search_subject, plot_outputs, plots_per
       updatePickerInput(
         session = session,
         inputId = "select_page",
-        choices = 1:num_pages(),
+        choices = seq_len(num_pages()),
         selected = current_page()
       )
     })

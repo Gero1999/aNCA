@@ -193,6 +193,7 @@ get_halflife_plots <- function(pknca_data, add_annotations = TRUE,
       group_vars = group_vars(pknca_data),
       add_annotations = add_annotations
     )
+    attr(plot_list[[plotid]], "anca_subject") <- as.character(df$USUBJID[1])
     data_list[[plotid]] <- df
   }
   list(plots = plot_list, data = data_list)

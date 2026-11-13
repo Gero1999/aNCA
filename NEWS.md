@@ -13,7 +13,7 @@
 * **Partial intervals:** Calculate additional interval parameters through Partial Interval Calculations and distinguish dose-relative ranges consistently in results, statistics, and plot selectors (#524, #1146, #1148, #1169, #1249, #1305, #1309).
 * **Dose intervals:** Corrected urine dose numbering, prevented doses without post-dose samples from being combined, and extended the last interval to the last observed sample (#963, #1116, #1235).
 * **Imputation:** Configure BLQ rules and run NCA without start imputation, using the first sample at or after the dose as the interval start (#139, #1121, #1266).
-* **Half-life selection:** Set minimum point counts, apply R²-based flags, and select slope points by time with corrected grouping, pagination, and plot rendering (#333, #834, #956, #1155, #1378).
+* **Half-life selection:** Set minimum point counts, apply R²-based flags, and select slope points by time with corrected grouping, pagination, literal subject-ID filtering, and plot rendering (#333, #834, #956, #1155, #1378).
 * **Calculation exclusions:** Apply general exclusions and ADNCA flag rules, with separate controls for calculation and summary exclusions (#752, #851, #1018, #1040, #1436).
 * **Summary exclusions:** Apply concentration and parameter exclusions to their respective summaries while retaining individual records and marking excluded concentrations in plots and exports (#1331, #1343, #1356, #1439, #1536).
 * **Results accuracy:** Corrected missing-versus-unrequested flags, duplicate result rows, and descriptive-statistics grouping when exporting before opening the results tab (#934, #1169, #1264, #1479).
