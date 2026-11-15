@@ -748,6 +748,7 @@ zip_server <- function(id, res_nca, adnca_data, settings, grouping_vars) {
       tryCatch(
         {
           progress <- shiny::Progress$new(min = 0, max = 1)
+          on.exit(progress$close(), add = TRUE)
           progress$set(message = "Creating exports...")
           progress$inc(0.1)
 
