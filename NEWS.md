@@ -4,7 +4,7 @@
 
 * **Data upload:** Combine multiple files, see accepted formats and size limits, and receive clearer upload and mapping errors (#821, #1365, #1367).
 * **Data mapping:** Map excretion times and body-weight units, enter dose duration and treatment intervals directly, and continue after mapping errors or duplicate-row cancellation without stuck loading indicators (#745, #959, #1051, #1402, #1420).
-* **Saved sessions:** Save versioned YAML settings and restore mappings, filters, exclusions, ratios, units, and previous NCA runs from YAML or ZIP, including reusable templates, startup settings, and version selection in installed packages (#514, #832, #860, #901, #993, #1082, #1091, #1103, #1104, #1195, #1225, #1476).
+* **Saved sessions:** Save versioned YAML settings and restore mappings, filters, exclusions, ratios, units, and previous NCA runs repeatedly from YAML or ZIP without stuck loading indicators, including reusable templates, startup settings, and version selection in installed packages (#514, #832, #860, #901, #993, #1082, #1091, #1103, #1104, #1195, #1225, #1476).
 * **Settings stability:** Preserve parameter and summary selections during setup changes, apply filters consistently, and ignore invalid partial intervals in uploaded settings (#840, #1008, #1060, #1092, #1347).
 
 ## NCA calculations & results
@@ -37,7 +37,7 @@
 * **TLG catalog:** Added concentration and PK summaries, dose-normalized and urine outputs, geometric mean ratios with 90% confidence intervals, boxplots, dose-proportionality plots, and individual listings (#1343).
 * **TLG selection:** Search and select outputs by dataset, manage the order with bulk controls, and receive explanations for unavailable outputs or missing NCA results (#1335, #1356, #1530).
 * **Table customization:** Choose grouping, covariate comparisons, statistics, parameters, timepoints, and listing columns, with readable group headers and warnings for unavailable grouping variables (#1343, #1356, #1531).
-* **Urine outputs:** Select urine matrices regardless of case in excretion analysis and validate selections before calculation; restrict urine tables and listings to urine specimens, report missing specimen information, and distinguish absent urine parameters from records removed by filters or exclusions (#1335, #1343, #1356, #1476, #1531).
+* **Urine outputs:** Select urine matrices regardless of case in excretion analysis and validate selections, collection times, and body-weight units before calculation, with recoverable calculation errors; restrict urine tables and listings to urine specimens, report missing specimen information, and distinguish absent urine parameters from records removed by filters or exclusions (#1335, #1343, #1356, #1476, #1531).
 
 ## Exports & CDISC
 
@@ -51,7 +51,7 @@
 ## Help & compatibility
 
 * **Help and navigation:** Added parameter references, ratio and R-script guides, contextual help, session information, clearer labels, and resizable sidebars (#899, #975, #1015, #1023, #1090, #1156, #1251, #1300, #1333).
-* **PKNCA compatibility:** Fixed development-version failures affecting start imputation, duplicate R2ADJ results, half-life selection, excretion parameters, and dose-escalation reports; excretion parameters are registered for namespace-only calls as well as attached use; R >= 4.4 is now required (#1102).
+* **PKNCA compatibility:** Fixed development-version failures affecting start imputation, duplicate R2ADJ results, half-life selection, excretion parameters, and dose-escalation reports; excretion parameters are registered for namespace-only calls as well as attached use; collection-volume interval metadata no longer blocks NCA or slope plots, and slope-generation errors remain recoverable; R >= 4.4 is now required (#1102).
 * **App startup:** Fixed installed-package and read-only deployment startup failures, keep application logs in a writable temporary or configured directory, restore the upload-limit option on exit, and recover after NCA errors (#913, #1107, #1378).
 * **Optional dependencies:** Reporting packages `rlistings`, `officer`, and `flextable` are now optional, with notifications when required for an output (#1106).
 
