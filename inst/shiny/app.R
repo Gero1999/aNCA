@@ -47,7 +47,8 @@ ui <- function() {
         textInput("project_name", label = NULL, placeholder = "Project Name"),
         icon("file", class = "project-name-icon"),
         zip_ui("zip_modal")
-      )
+      ),
+      diagnostics_ui()
     ),
 
     tags$script("
@@ -78,6 +79,7 @@ ui <- function() {
     includeCSS(file.path(assets, "main.css")),
     includeScript(file.path(assets, "index.js")),
     includeScript(file.path(assets, "tlg_add_picker.js")),
+    includeScript(file.path(assets, "diagnostics.js")),
 
     sidebar = navset_pill_list(
       id = "page",
@@ -152,6 +154,7 @@ ui <- function() {
 }
 
 server <- function(input, output, session) {
+  diagnostics_session(session)
   log_info("Startup")
 
   # Store globally the name of the project

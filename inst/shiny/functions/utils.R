@@ -2,9 +2,8 @@
 #'
 #' @details
 #' The application logs everything to a log file located in `/log` directory. If such folder
-#' does not exist, it will be created. Logfile for each session will be separate. The application
-#' will keep 5 log files at any given time - if this number is exceeded, the oldest log file
-#' will be deleted.
+#' does not exist, it will be created. Files are shared server logs, never session reports.
+#' Each run rotates at 5 MB with five files; startup keeps at most four previous files.
 #'
 #' In addition, information of the level specified by the user will be logged to console.
 #' As a default, this level is INFO - this is so that the user has good information on what is
@@ -19,12 +18,17 @@ setup_logger <- function() {
 
   log_dir <- "./log"
   if (!dir.exists(log_dir)) dir.create(log_dir)
-  existing_logs <- list.files(log_dir, full.names = TRUE)
-  if (length(existing_logs) >= 5) file.remove(sort(existing_logs)[1]) # keep only five log files
-  logfile_name <- paste0(log_dir, "/aNCA_app_", format(Sys.time(), "%y%m%d-%H%M%S-"), ".log")
+  existing_logs <- sort(list.files(log_dir, pattern = "^aNCA_app_", full.names = TRUE))
+  if (length(existing_logs) > 4) file.remove(head(existing_logs, -4))
+  logfile_name <- paste0(
+    log_dir, "/aNCA_app_", format(Sys.time(), "%y%m%d-%H%M%S-"), Sys.getpid(), ".log"
+  )
 
-  log_appender(appender_file(logfile_name))
+  log_appender(diagnostics_file_appender(logfile_name))
   log_appender(appender_console, index = 2)
+  log_layout(diagnostics_log_layout, index = 3)
+  log_threshold(INFO, index = 3)
+  log_appender(diagnostics_log_appender, index = 3)
 }
 
 #' Logs a list and data frame objects.

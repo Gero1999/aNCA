@@ -29,6 +29,7 @@ describe("versioned uploads with installed-package visibility", {
                envir = app_env)
     }
     app_env$`%||%` <- rlang::`%||%`
+    source(system.file("shiny/functions/diagnostics.R", package = "aNCA"), local = app_env)
     source(system.file("shiny/modules/tab_data/data_upload.R", package = "aNCA"),
            local = app_env)
     version <- create_settings_version(

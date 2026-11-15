@@ -221,34 +221,36 @@ data_filtering_server <- function(id, raw_adnca_data, imported_filters) {
     filter_reminder_notification <- .setup_filter_reminder(session, filters)
 
     filtered_data <- reactive({
-      removeNotification(filter_reminder_notification())
+      diagnostics_run({
+        removeNotification(filter_reminder_notification())
 
-      applied_filters <- lapply(reactiveValuesToList(filters), function(x) x()) %>%
-        purrr::keep(\(x) !is.null(x))
+        applied_filters <- lapply(reactiveValuesToList(filters), function(x) x()) %>%
+          purrr::keep(\(x) !is.null(x))
 
-      if (length(applied_filters) == 0) return(raw_adnca_data())
+        if (length(applied_filters) == 0) return(raw_adnca_data())
 
-      applied_filters %>%
-        sapply(\(filt) glue::glue("* {filt$column} {filt$condition} {paste0(filt$value, collapse = ', ')}")) %>% # nolint
-        paste0(collapse = "\n") %>%
-        paste0("Submitting the following filters:\n", .) %>%
-        log_info()
+        applied_filters %>%
+          sapply(\(filt) glue::glue("* {filt$column} {filt$condition} {paste0(filt$value, collapse = ', ')}")) %>% # nolint
+          paste0(collapse = "\n") %>%
+          paste0("Submitting the following filters:\n", .) %>%
+          log_info()
 
-      session$userData$applied_filters <- applied_filters
+        session$userData$applied_filters <- applied_filters
 
-      withCallingHandlers({
-        apply_filters(raw_adnca_data(), applied_filters)
-      }, warning = function(w) {
-        log_warn(conditionMessage(w))
-        showNotification(
-          paste0("Warning during filtering: ", conditionMessage(w)),
-          type = "warning",
-          duration = 10
-        )
-        invokeRestart("muffleWarning")
-      })
+        withCallingHandlers({
+          apply_filters(raw_adnca_data(), applied_filters)
+        }, warning = function(w) {
+          log_warn(conditionMessage(w))
+          showNotification(
+            paste0("Warning during filtering: ", conditionMessage(w)),
+            type = "warning",
+            duration = 10
+          )
+          invokeRestart("muffleWarning")
+        })
+      }, operation = "Data filtering", session = session)
     }) %>%
-      bindEvent(input$submit_filters, raw_adnca_data())
+      bindEvent(input$submit_filters, raw_adnca_data(), ignoreNULL = FALSE)
 
     # Expose the applied filters list
     applied_filters_list <- reactive({

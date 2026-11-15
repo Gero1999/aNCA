@@ -88,6 +88,33 @@ After the setup is done and analysis is performed, you are free to explore the r
 
 For more detailed instructions, check out the [Get Started](https://pharmaverse.github.io/aNCA/articles/aNCA.html) page.
 
+### Diagnostics and recovery
+
+The **Diagnostics** button in the header is available from every tab. If a data
+or NCA operation fails, follow **Open diagnostics** in the notification, check
+your inputs and settings, and retry. A failed NCA attempt clears its previous
+results and export caches; it does not change the NCA formulas.
+
+The panel shows a reference ID and up to 100 recent session events. **Download
+diagnostic report** creates a JSON file in the browser, including after a
+disconnection. It contains only events received before disconnection and is
+lost when the page is reloaded or closed. Reports use fixed summaries, excluding
+raw error text, datasets, study/subject identifiers, filenames, server paths,
+and credentials. Detailed shared server logs are never offered for download.
+Support can correlate a reference with the server's normal, access-controlled
+logs, which retain original error details and can contain sensitive information.
+Restrict server-log access to authorized administrators. File logs rotate at
+5 MB with five files per run; startup retains up to
+four files from previous runs. Browser reports can omit events outside a live
+session or below INFO severity.
+
+Recovery covers the main upload, settings upload, mapping, filtering, data
+preparation, and NCA operations. Other unexpected failures retain Shiny's normal
+handling and get a session diagnostic when its error hook runs. `req()` and
+`validate()` remain normal validation flow. Process termination, out-of-memory
+failures, and native-code crashes can still require hosting-level recovery;
+browser reports cannot reconstruct events they never received.
+
 ## Contributing
 
 Check our [contributing guidelines](https://github.com/pharmaverse/aNCA/blob/main/CONTRIBUTING.md).

@@ -402,16 +402,16 @@ data_mapping_server <- function(id, adnca_data, imported_mapping, trigger,
     })
 
     mapped_data <- reactive({
-      req(adnca_data())
-      log_info(paste(
-        "Processing data mapping; input rows =", nrow(adnca_data()),
-        "input columns =", ncol(adnca_data())
-      ))
+      diagnostics_run({
+        req(adnca_data())
+        log_info(paste(
+          "Processing data mapping; input rows =", nrow(adnca_data()),
+          "input columns =", ncol(adnca_data())
+        ))
 
-      mapping_ <- mapping()
-      names(mapping_) <- gsub("^select_", "", names(mapping_))
+        mapping_ <- mapping()
+        names(mapping_) <- gsub("^select_", "", names(mapping_))
 
-      tryCatch(
         withCallingHandlers(
           {
             adnca_data() %>%
@@ -427,18 +427,13 @@ data_mapping_server <- function(id, adnca_data, imported_mapping, trigger,
             showNotification(conditionMessage(w), type = "warning", duration = 10)
             invokeRestart("muffleWarning")
           }
-        ),
-        error = function(e) {
-          log_error(paste("Mapping failed:", conditionMessage(e)))
-          if (!isTRUE(session$userData$auto_replay_active)) {
-            removeModal()
-          }
-          showNotification(conditionMessage(e), type = "error", duration = NULL)
-          NULL
-        }
-      )
+        )
+      }, operation = "Data mapping", session = session, invalidate = function() {
+        session$userData$auto_replay_active <- FALSE
+        removeModal(session = session)
+      })
     }) %>%
-      bindEvent(trigger(), ignoreInit = TRUE)
+      bindEvent(trigger(), ignoreInit = TRUE, ignoreNULL = FALSE)
 
     # Check for blocking duplicates using annotate_duplicates()
     df_duplicates <- reactiveVal(NULL)
@@ -452,39 +447,40 @@ data_mapping_server <- function(id, adnca_data, imported_mapping, trigger,
     })
 
     processed_data <- reactive({
-      log_trace("Duplicate validation started.")
-      tryCatch(
-        {
-          req(mapped_data())
+      diagnostics_run({
+        log_trace("Duplicate validation started.")
+        tryCatch(
+          {
+            req(mapped_data())
 
-          dup_rows <- resolved_time_duplicate_rows()
-          if (is.null(dup_rows)) {
-            restored <- .restore_duplicate_exclusions(
-              mapped_data(), imported_mapping()$time_duplicate_keys
-            )
-            if (!is.null(restored)) {
-              resolved_time_duplicate_rows(restored)
-              dup_rows <- restored
+            dup_rows <- resolved_time_duplicate_rows()
+            if (is.null(dup_rows)) {
+              restored <- .restore_duplicate_exclusions(
+                mapped_data(), imported_mapping()$time_duplicate_keys
+              )
+              if (!is.null(restored)) {
+                resolved_time_duplicate_rows(restored)
+                dup_rows <- restored
+              }
             }
-          }
 
-          result <- aNCA:::annotate_duplicates(mapped_data(), dup_rows)
-          select(result, any_of(c(names(mapped_data()), "DTYPE")))
-        },
-        time_duplicate_error = function(e) {
-          duplicate_data <- e$duplicate_data
-          log_warn(paste(
-            "Duplicate validation found", nrow(duplicate_data),
-            "unresolved rows; scheduling duplicate modal."
-          ))
-          session$onFlushed(
-            function() df_duplicates(duplicate_data),
-            once = TRUE
-          )
-          NULL
-        },
-        finally = on_mapping_complete()
-      )
+            result <- aNCA:::annotate_duplicates(mapped_data(), dup_rows)
+            select(result, any_of(c(names(mapped_data()), "DTYPE")))
+          },
+          time_duplicate_error = function(e) {
+            duplicate_data <- e$duplicate_data
+            log_warn(paste(
+              "Duplicate validation found", nrow(duplicate_data),
+              "unresolved rows; scheduling duplicate modal."
+            ))
+            session$onFlushed(
+              function() df_duplicates(duplicate_data),
+              once = TRUE
+            )
+            NULL
+          }
+        )
+      }, operation = "Data mapping", session = session, cleanup = on_mapping_complete)
     }) %>%
       bindEvent(
         # Key on trigger() so this re-runs on every submit, even when the
@@ -497,7 +493,7 @@ data_mapping_server <- function(id, adnca_data, imported_mapping, trigger,
         # dropped. Keep resolved_time_duplicate_rows() so resolving duplicates
         # re-runs it.
         list(trigger(), mapped_data(), resolved_time_duplicate_rows()),
-        ignoreInit = FALSE
+        ignoreInit = FALSE, ignoreNULL = FALSE
       )
 
     observeEvent(input$keep_selected_btn, {

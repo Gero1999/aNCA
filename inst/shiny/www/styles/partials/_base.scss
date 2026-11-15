@@ -339,3 +339,27 @@ div[data-value="Settings"] {
 .bslib-sidebar-layout > .main {
   padding: 0;
 }
+
+/* Diagnostics remain available above the disconnected overlay. */
+#diagnostics-panel {
+  width: min(48rem, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+  border: 1px solid #777;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+#diagnostics-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30vh;
+  overflow: auto;
+}
+#diagnostics-panel::backdrop { background: rgba(0, 0, 0, 0.45); }
+#diagnostics-open.diagnostics-offline {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2147483647;
+  background: white;
+}

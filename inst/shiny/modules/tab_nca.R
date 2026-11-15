@@ -168,6 +168,15 @@ tab_nca_ui <- function(id) {
   pknca_data
 }
 
+# Clear export caches before a new attempt, including attempts that stop at req().
+# Downstream displays are invalidated by res_nca returning NULL or a silent error.
+.clear_nca_result_state <- function(session) {
+  session$userData$nca_ran <- FALSE
+  session$userData$final_units <- NULL
+  session$userData$results$nca_results <- NULL
+  session$userData$results$CDISC <- NULL
+}
+
 tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
                            auto_replay_ready) {
   moduleServer(id, function(input, output, session) {
@@ -243,23 +252,36 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
       shinyjs::click("run_nca")
     })
 
-    #' Triggers NCA analysis, creating res_nca reactive
-    res_nca <- reactive({
-      processed_data <- .validate_nca_run(
-        general_settings,
-        processed_pknca_data,
-        auto_nca_running,
-        session
-      )
-      if (is.null(processed_data)) return(NULL)
+    # Store only a completed attempt. A failed attempt must not leave the prior
+    # calculation available to results modules or downloads.
+    res_nca <- reactiveVal(NULL)
+    observe({
+      res_nca(NULL)
+      .clear_nca_result_state(session)
+      shinyjs::show(id = "nca_run_overlay")
+      pknca_data()
+    }, priority = 10)
 
-      if (!auto_nca_running()) {
-        loading_popup("Calculating NCA results...")
-      }
+    observeEvent(input$run_nca, {
+      res_nca(NULL)
+      .clear_nca_result_state(session)
+      shinyjs::show(id = "nca_run_overlay")
+      shinyjs::disable("run_nca")
+      result <- diagnostics_run({
+        processed_data <- .validate_nca_run(
+          general_settings,
+          processed_pknca_data,
+          auto_nca_running,
+          session
+        )
+        if (is.null(processed_data)) return(NULL)
 
-      log_info("Calculating NCA results...")
+        if (!auto_nca_running()) {
+          loading_popup("Calculating NCA results...")
+        }
 
-      tryCatch({
+        log_info("Calculating NCA results...")
+
         # Create env for storing PKNCA run warnings, so that warning messages can be appended
         # from within warning handler without bleeding to global env.
         pknca_warn_env <- new.env()
@@ -321,7 +343,6 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
         # Display unique warnings thrown by PKNCA run.
         purrr::walk(unique(pknca_warn_env$warnings), function(w) {
           w_message <- paste0("PKNCA run produced a warning: ", w)
-          log_warn(w_message)
           showNotification(w_message, type = "warning", duration = 5)
         })
 
@@ -329,31 +350,19 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
 
         log_success("NCA results calculated.")
 
+        shinyjs::hide(id = "nca_run_overlay")
+        session$userData$nca_ran <- TRUE
         res
-      }, error = function(e) {
-        log_error("Error calculating NCA results:\n{conditionMessage(e)}")
-        showNotification(.parse_pknca_error(e), type = "error", duration = NULL)
-        NULL
-      }, finally = {
-        if (auto_nca_running()) {
-          auto_nca_running(FALSE)
-          session$userData$auto_replay_active <- FALSE
-          # Dismiss the "Restoring session..." popup
-          shiny::removeModal()
-          log_success("Auto-replay: session restored with NCA results.")
-        } else {
-          # Delay the removal of loading modal to give it enough time to render
-          later::later(~shiny::removeModal(session = session), delay = 0.5)
-        }
+      }, operation = "NCA calculation", session = session, cleanup = function() {
+        shinyjs::enable("run_nca")
+        auto_nca_running(FALSE)
+        session$userData$auto_replay_active <- FALSE
+        # A later flush lets Bootstrap finish showing the loading modal before
+        # hiding it. This cleanup also runs for req()/validate() conditions.
+        later::later(function() shiny::removeModal(session = session), delay = 0.5)
       })
-    }) %>%
-      bindEvent(input$run_nca)
-
-    # Hide "Run NCA first" overlay when Run NCA is clicked
-    observe({
-      shinyjs::hide(id = "nca_run_overlay")
-    }) %>%
-      bindEvent(input$run_nca)
+      res_nca(result)
+    })
 
     observe({
       req(res_nca())
@@ -427,40 +436,6 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
   })
 }
 
-#'
-#' Parses error from results calculation pipeline into a html-formatted message ready
-#' to be displayed in the interface.
-#'
-#' @param e Error object.
-#' @returns String with html-formatted error message.
-.parse_pknca_error <- function(e) {
-  msg <- conditionMessage(e)
-
-  if (grepl("pk.calc.", msg)) {
-    # Handle errors from PKNCA package.
-    param_of_error <- gsub(".*'pk\\.calc\\.(.*)'.*", "\\1", msg)
-    msg <- paste0(
-      "Problem in calculation of NCA parameter: ",
-      param_of_error,
-      "<br><br>", msg,
-      "<br><br>If the error is unexpected, please report a bug."
-    )
-
-  } else if (grepl("^No reason provided", msg)) {
-    # Handle no reason provided erros from the calculation function.
-    msg <- msg
-
-  } else {
-    # Handle unknown error
-    msg <- paste0(
-      "Unknown error detected when calculating NCA results,",
-      " please inspect the logs and report a bug."
-    )
-  }
-
-  HTML(gsub("\\\n", "<br>", msg))
-}
-
 .parse_pknca_warning <- function(w) {
   msg <- conditionMessage(w)
 
@@ -483,5 +458,6 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
     )
   }
 
-  HTML(gsub("\\\n", "<br>", msg))
+  # Package warnings can contain user-controlled labels; render them as text.
+  msg
 }

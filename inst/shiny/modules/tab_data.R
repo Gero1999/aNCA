@@ -483,10 +483,13 @@ tab_data_server <- function(id) {
 
     # Use raw data + mapping to create a PKNCA object
     pknca_data <- reactive({
-      req(processed_data())
-      log_trace("Creating PKNCA::data object.")
-
-      tryCatch({
+      purrr::walk(c("nca", "exploration", "tlg"), function(tab) {
+        shinyjs::disable(selector = paste0("#page li a[data-value=", tab, "]"))
+      })
+      prepared <- FALSE
+      diagnostics_run({
+        req(processed_data())
+        log_trace("Creating PKNCA::data object.")
         pknca_object <- PKNCA_create_data_object(
           adnca_data = uploaded_data$adnca_raw(),
           mapping = column_mapping$mapping(),
@@ -502,14 +505,17 @@ tab_data_server <- function(id) {
           )
         })
 
+        prepared <- TRUE
         pknca_object
-      }, error = function(e) {
-        log_error(e$message)
-        showNotification(e$message, type = "error", duration = NULL)
-        NULL
+      }, operation = "Data preparation", session = session, cleanup = function() {
+        if (!prepared) {
+          auto_replay(FALSE)
+          session$userData$auto_replay_active <- FALSE
+          shiny::removeModal(session = session)
+        }
       })
     }) %>%
-      bindEvent(processed_data())
+      bindEvent(processed_data(), ignoreNULL = FALSE)
 
     auto_replay_ready <- .setup_auto_replay(
       uploaded_data, auto_replay, data_step, trigger_mapping_submit,

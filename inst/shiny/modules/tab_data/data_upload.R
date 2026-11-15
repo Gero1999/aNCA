@@ -139,7 +139,7 @@ data_upload_server <- function(id) {
       if (is.null(file_loading_error())) {
         p("")
       } else {
-        p(span(HTML(file_loading_error())), class = "error-string")
+        p(span(file_loading_error()), class = "error-string")
       }
     })
 
@@ -156,7 +156,7 @@ data_upload_server <- function(id) {
     settings_path <- getOption("aNCA.settings", NULL)
     if (!is.null(settings_path)) {
       settings_ver <- getOption("aNCA.settings_version", 1L)
-      tryCatch({
+      diagnostics_run({
         content <- read_settings(settings_path, version = settings_ver)
         .restore_uploaded_settings(settings_override, content)
         versioned_attr <- attr(content, "versioned")
@@ -176,42 +176,38 @@ data_upload_server <- function(id) {
           log_success("Settings successfully loaded from: ", settings_path)
           showNotification("Settings successfully loaded.", type = "message")
         }
-      }, error = function(e) {
-        log_error("Failed to load settings: ", e$message)
-        showNotification(
-          paste("Failed to load settings file:", e$message),
-          type = "error"
-        )
-      })
+      }, operation = "Settings upload", session = session)
     }
 
     raw_data <- (
       reactive({
-        file_loading_error(NULL)
+        diagnostics_run({
+          file_loading_error(NULL)
 
-        oversized_uploads <- .oversized_uploads(input$data_upload)
-        if (nrow(oversized_uploads) > 0) {
-          msg <- .upload_size_error_message(
-            paste(oversized_uploads$name, collapse = ", ")
+          oversized_uploads <- .oversized_uploads(input$data_upload)
+          if (nrow(oversized_uploads) > 0) {
+            msg <- .upload_size_error_message(
+              paste(oversized_uploads$name, collapse = ", ")
+            )
+            file_loading_error(msg)
+            showNotification(msg, type = "error", duration = NULL)
+            return(NULL)
+          }
+
+          upload_paths <- .resolve_upload_paths(
+            input$data_upload, datapath, session
           )
-          file_loading_error(msg)
-          showNotification(msg, type = "error", duration = NULL)
-          return(DUMMY_DATA)
-        }
+          if (is.null(upload_paths)) {
+            session$userData$dataset_filename <- "adnca_example"
+            return(DUMMY_DATA)
+          }
 
-        upload_paths <- .resolve_upload_paths(
-          input$data_upload, datapath, session
-        )
-        if (is.null(upload_paths)) {
-          session$userData$dataset_filename <- "adnca_example"
-          return(DUMMY_DATA)
-        }
-
-        .process_uploaded_files(
-          upload_paths$paths, upload_paths$filenames,
-          DUMMY_DATA, settings_override, pending_versioned,
-          file_loading_error, session, ns
-        )
+          .process_uploaded_files(
+            upload_paths$paths, upload_paths$filenames,
+            DUMMY_DATA, settings_override, pending_versioned,
+            file_loading_error, session, ns
+          )
+        }, operation = "Data upload", session = session)
       }) %>%
         bindEvent(input$data_upload, ignoreNULL = FALSE)
     )
@@ -307,8 +303,11 @@ data_upload_server <- function(id) {
   }
 
   if (length(errors) > 0) {
-    file_loading_error(paste(errors, collapse = "<br>"))
-    log_error("Errors loading files: ", paste(errors, collapse = "; "))
+    file_loading_error("Some files could not be loaded. Review the upload and open Diagnostics.")
+    diagnostics_run({
+      stop(paste(errors, collapse = "; "), call. = FALSE)
+    }, operation = "Data upload", session = session)
+    return(NULL)
   }
 
   loaded_data$data
@@ -367,12 +366,9 @@ data_upload_server <- function(id) {
   }
 
   chosen <- versioned$versions[[selected_idx]]
-  content <- tryCatch(
+  content <- diagnostics_run(
     aNCA:::.process_settings_payload(chosen[setdiff(names(chosen), aNCA:::VERSION_META_KEYS)]),
-    error = function(e) {
-      showNotification(conditionMessage(e), type = "error")
-      NULL
-    }
+    operation = "Settings upload", session = session
   )
   if (is.null(content)) return()
 
@@ -437,6 +433,7 @@ data_upload_server <- function(id) {
       obj <- read_settings(path)
       list(status = "success", type = "settings", content = obj, name = name)
     }, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
       list(status = "error", msg = conditionMessage(e), name = name)
     })
   } else {
@@ -444,6 +441,7 @@ data_upload_server <- function(id) {
       obj <- read_pk(path)
       list(status = "success", type = "data", content = obj, name = name)
     }, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
       list(status = "error", msg = conditionMessage(e), name = name)
     })
   }
@@ -527,7 +525,6 @@ data_upload_server <- function(id) {
       log_success("All user data loaded successfully.")
     }, error = function(e) {
       error <<- paste0("Error combining files: ", e$message)
-      log_error("Error binding user data: ", e$message)
     })
   }
 

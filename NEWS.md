@@ -50,6 +50,8 @@
 
 ## Help & compatibility
 
+* **Diagnostics:** Open session diagnostics from every tab, download recent safe events even after disconnection, and retry failed data or NCA operations without retaining outdated results.
+
 * **Help and navigation:** Added parameter references, ratio and R-script guides, contextual help, session information, clearer labels, and resizable sidebars (#899, #975, #1015, #1023, #1090, #1156, #1251, #1300, #1333).
 * **PKNCA compatibility:** Fixed development-version failures affecting start imputation, duplicate R2ADJ results, half-life selection, excretion parameters, and dose-escalation reports; R >= 4.4 is now required (#1102).
 * **App startup:** Fixed installed-package and read-only deployment startup failures and recovery after NCA errors (#913, #1107, #1378).
