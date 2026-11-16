@@ -1,6 +1,6 @@
 # Local implementation branches
 
-All nine solution branches start from the reviewed branch at `ff86d834`.
+All nine solution branches start from the reviewed branch at `2a5e154e`.
 They are local commits; nothing was pushed and no remote PR was opened.
 
 ## How to test
@@ -67,12 +67,12 @@ Logs and local validation artifacts are retained under `/workspace/.anca-setup/i
 
 | Branch | Commit |
 | --- | --- |
-| `fix/review-geometric-cv` | `22ae78ae` |
-| `fix/review-input-filters` | `74a17de8` |
-| `fix/review-interval-ratios` | `c50d8df3` |
-| `fix/review-lazy-tlg` | `7a42d4f4` |
-| `fix/review-literal-serialization` | `3ed14fb7` |
-| `fix/review-optional-app` | `095c8795` |
-| `fix/review-predose` | `92e310ef` |
-| `fix/review-session-results` | `19c259c0` |
-| `fix/review-unit-ratios` | `867ef915` |
+| `fix/review-geometric-cv` | `bfad764c` |
+| `fix/review-input-filters` | `07359954` |
+| `fix/review-interval-ratios` | `c9ec7e41` |
+| `fix/review-lazy-tlg` | `dbfb9189` |
+| `fix/review-literal-serialization` | `788d9fec` |
+| `fix/review-optional-app` | `2858c33c` |
+| `fix/review-predose` | `0f91a4ab` |
+| `fix/review-session-results` | `09fa44df` |
+| `fix/review-unit-ratios` | `90a6552d` |
