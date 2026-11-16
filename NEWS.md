@@ -1,3 +1,9 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Predose profile backfill now uses the latest eligible sample within four physical hours, regardless of input time units or row order.
+
 # aNCA 0.2.0
 
 ## Data & settings

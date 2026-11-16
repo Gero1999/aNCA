@@ -248,13 +248,6 @@ process_data_individual <- function(pknca_data,
       conc_time_col = pknca_data$conc$columns$time
     )
 
-    # Adjust time variable with dose time if using time since last dose
-    if (use_time_since_last_dose) {
-      data <- mutate(
-        data,
-        !!pknca_data$conc$columns$time := !!sym(pknca_data$conc$columns$time) - TIME_DOSE
-      )
-    }
     if (dose_normalize) {
       data <- .apply_dose_normalization(data, conc_col, concu_col, dose_col, doseu_col)
     }
@@ -265,13 +258,20 @@ process_data_individual <- function(pknca_data,
   # Handle dose profile duplicates if filtering by ATPTREF so pre-dose samples
   # assigned only to one profile are retained
   if ("ATPTREF" %in% names(filtering_list)) {
-    if ("ARRLT" %in% names(data) && any(data$ARRLT < 0 & data$AFRLT > 0)) {
-      data <- dose_profile_duplicates(
+    if (all(c("AFRLT", "ARRLT", "NFRLT", "NRRLT", "ATPTREF") %in% names(data))) {
+      # PKNCA unit-column metadata carries attributes; downstream nested column
+      # replacement expects data.frame indexing semantics rather than tibble's.
+      data <- as.data.frame(dose_profile_duplicates(
         data,
-        groups = c(group_vars(pknca_data$conc), "ATPTREF"),
+        groups = unique(c(group_vars(pknca_data$conc), "ATPTREF")),
         dosno = "ATPTREF"
-      )
+      ))
     }
+  }
+
+  # Backfill must use absolute times before changing the displayed time origin.
+  if (use_time_since_last_dose) {
+    data <- mutate(data, !!time_col := !!sym(time_col) - TIME_DOSE, TIME_DOSE = 0)
   }
 
   # Apply filtering

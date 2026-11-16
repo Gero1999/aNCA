@@ -45,3 +45,51 @@ describe("dose_profile_duplicates", {
     expect_equal(result_char_dosno$PROFILE[1:4], c("A", "A", "A", "A"))
   })
 })
+
+describe("physical-time predose selection", {
+  profile <- data.frame(
+    USUBJID = "S1", PARAM = "DrugA", DOSNOA = c(1, 1, 2),
+    AFRLT = c(7, 8, 10), ARRLT = c(7, 8, 0), NFRLT = c(7, 8, 10),
+    NRRLT = c(7, 8, 0), AVAL = c(70, 80, 100), RRLTU = "hour"
+  )
+  predose <- function(x, ...) {
+    result <- dose_profile_duplicates(x, ...)
+    result[result$DOSNOA == 2 & result$ARRLT < 0, , drop = FALSE]
+  }
+
+  it("is invariant to row order and equivalent hour/minute/day inputs", {
+    for (unit in c("hour", "min", "day")) {
+      multiplier <- c(hour = 1, min = 60, day = 1 / 24)[[unit]]
+      x <- profile
+      x[c("AFRLT", "ARRLT", "NFRLT", "NRRLT")] <-
+        x[c("AFRLT", "ARRLT", "NFRLT", "NRRLT")] * multiplier
+      x$RRLTU <- unit
+      for (order in list(1:3, c(2, 1, 3), c(3, 2, 1))) {
+        actual <- predose(x[order, ])
+        expect_equal(actual$AVAL, 80)
+        expect_equal(actual$ARRLT / multiplier, -2)
+      }
+    }
+  })
+
+  it("includes the four-hour boundary and excludes earlier and postdose samples", {
+    x <- profile[c(1, 3), ]
+    x$AFRLT[1] <- x$ARRLT[1] <- x$NFRLT[1] <- x$NRRLT[1] <- 6
+    expect_equal(nrow(predose(x)), 1)
+    x$AFRLT[1] <- x$ARRLT[1] <- x$NFRLT[1] <- x$NRRLT[1] <- 5.99
+    expect_equal(nrow(predose(x)), 0)
+    x$AFRLT[1] <- x$ARRLT[1] <- x$NFRLT[1] <- x$NRRLT[1] <- 11
+    expect_equal(nrow(predose(x)), 0)
+  })
+
+  it("supports legacy inputs and validates explicit or inconsistent units", {
+    legacy <- profile
+    legacy$RRLTU <- NULL
+    expect_equal(predose(legacy)$AVAL, 80)
+    expect_equal(predose(legacy, time_unit = "hour")$AVAL, 80)
+    expect_error(predose(profile, time_unit = "ng"), "recognized time units")
+    expect_error(predose(profile, time_unit = c("hour", "min")), "one unit per row")
+    profile$RRLTU[2] <- "min"
+    expect_error(predose(profile), "consistent")
+  })
+})

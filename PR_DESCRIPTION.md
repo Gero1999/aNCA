@@ -1,104 +1,32 @@
-# Prepare aNCA 0.2.0 for CRAN review and fix session/calculation recovery
+# Preserve predose samples across time units and input ordering
 
-## Summary
+## How to test
 
-Prepare the 0.2.0 release candidate and address startup, session restoration,
-excretion, and PKNCA compatibility issues found during CRAN preparation.
-The branch also expands regression coverage and records release validation and
-remaining submission work.
+1. Start this branch's app: `devtools::load_all(); aNCA::run_app()`.
+2. Upload `tests/manual/data/predose-hours.csv`, keep same-name mappings, and apply no filters.
+3. Exploration → select DrugA / SERUM, Timescale **By Dose Profile**, profile **DOSE2**. The preceding concentration **80 ng/mL** must be present at **−2 hours**.
+4. Upload `tests/manual/data/predose-minutes.csv` with the same choices. Expect the same preceding point at **−120 minutes**, not a missing point. The physical profile must be unchanged.
+5. Reorder the rows within DOSE1 and repeat: the latest eligible sample remains **80**, not **70**. This order case is also tested directly because normal app preprocessing sorts input.
 
-This summary covers the net changes in `chore/cran-review-fixes` at `aea6b583`
-relative to `main` at `1a1c99bd` (41 files). Features already present on `main`
-are not additional changes introduced by this branch.
+## Description
 
-## Changes
+Addresses review finding **11**. Predose backfill selects the latest eligible sample by actual time within four physical hours of the next dose, instead of taking the last input row within four raw units. Samples after the next dose are excluded. Tied latest samples are retained rather than arbitrarily discarding a measurement.
 
-### Release packaging and documentation
+The helper automatically uses RRLTU; legacy inputs without units continue to mean hours. An optional `time_unit` argument supports explicit units. Unknown/inconsistent time units are rejected instead of silently changing the physical window. Existing original observations and previous-dose predose duplication are preserved.
 
-- Set the package version to **0.2.0** and publish the existing development NEWS
-  under that release, updating entries for the fixes below.
-- Include NEWS in source packages; exclude Sass cache metadata, local ZIPs,
-  generated test plots, application logs, the release checklist, and historical
-  validation reports. Vignettes remain excluded.
-- Add a release checklist and update CRAN comments with reproduction commands,
-  validation evidence, dependency compatibility findings, and submission tasks.
-- Clarify that Roche's historical validation applies to version 0.1.0.9004,
-  rather than the current release; correct internal documentation references.
+Exploration now performs backfill before converting absolute times to time since dose, and reassigned samples receive the correct dose-time metadata. This fixes the actual app plotting path as well as the helper. The plotting boundary retains data.frame indexing semantics for attribute-bearing PKNCA unit-column metadata, including mixed-unit dose-escalation exports.
 
-### Startup, logging, and exported scripts
+The two small equivalent-unit datasets are needed for the app comparison. Regression tests cover hours/minutes/days, row order, the four-hour boundary, excluded earlier/postdose samples, legacy inputs, and invalid/mixed units.
 
-- Store application logs in a writable temporary directory by default, with an
-  `aNCA_LOG_DIR` override. Rotate only matching aNCA log files, retain at most
-  five, and preserve unrelated files and directories.
-- Restore the caller's `shiny.maxRequestSize` option when `run_app()` exits,
-  including when startup fails.
-- Stop generated scripts with explicit installation instructions when aNCA is
-  missing, instead of automatically installing packages.
+## Validation
 
-### Session restoration and excretion analysis
+- Full development suite: **4,365 passed**, 0 failures, 0 warnings, 3 explicit skips.
+- Focused helper/exploration/diagnostic/ZIP suite: **247 passed**, no failures or warnings, 1 explicit full-session integration skip.
+- After the final explicit column-lookup qualification, **31 helper assertions** and touched-file lint passed; full package lint had **0 findings**.
+- Documentation regenerated with roxygen2 **7.3.3**.
+- Final package check with `--no-tests --no-manual`, full tests run separately: **0 errors, 0 warnings, 1 NOTE** (environment cannot verify current time).
+- Chromium production-function harness rendered actual points **x = [-2, 0, 1]**, **y = [80, 100, 90]** in hours, then **x = [-120, 0, 60]** with identical concentrations in minutes. Shiny stayed connected with **0 output errors**.
 
-- Reset readiness on every settings restore so repeated restores complete and
-  dismiss the loading dialog.
-- Automatically select urine matrices regardless of capitalization or surrounding
-  whitespace.
-- Validate matrix, parameter, and interval selections; the end-time column;
-  sample collection times; and body-weight values and mass units before
-  calculating. Warn when no matching intervals remain.
-- Catch excretion calculation errors, show actionable notifications, and keep
-  the session available for corrected inputs and resubmission.
-- Use explicit units-package calls for body-weight adjustment and remove unused
-  `DOSNOA`/`VOLUME` interval metadata while retaining actual sample volumes.
+The browser harness exercised the branch CSVs through `read_pk()` → PKNCA creation → production `exploration_individualplot()` → Plotly. It did not automate full-app upload/navigation; the terse steps above remain that reviewer acceptance procedure.
 
-### PKNCA compatibility and slope recovery
-
-- Register excretion extensions when the namespace loads, supporting
-  namespace-only use and sessions with only base R attached without replacing
-  native upstream definitions.
-- Export and document the callback aliases `anca_calc_ertlst`,
-  `anca_calc_ertmax`, `anca_calc_volpk`, and `anca_calc_fe` to support older
-  PKNCA callback lookup.
-- Remove incidental `VOLUME` interval metadata from normal NCA updates unless
-  explicitly retained or used for concentration grouping. Preserve sample
-  volumes and compatibility with stricter development PKNCA validation.
-- Catch slope-generation errors, clear failed plots and stale slope results,
-  and allow calculation to recover after data or settings are corrected.
-
-### Tests and reproducibility
-
-- Require testthat >= 3.2.0 and guard individual tests that need optional
-  packages rather than disabling the suite.
-- Replace the unconditionally skipped browser runner with an opt-in installed-app
-  smoke test (`ANCA_RUN_BROWSER_TESTS=true`) covering connection, upload controls,
-  and absence of Shiny output errors.
-- Exercise lazy-loaded SDTM example datasets in installed packages; add regression
-  tests for logging, option cleanup, generated scripts, namespace loading,
-  repeated restores, excretion validation/recovery, and interval/slope handling.
-- Explicitly assert the expected TLG warning and accept only the two specific
-  empty-data warnings introduced by development PKNCA.
-- Add manual reproduction guides for restoration, excretion, and interval
-  metadata, plus an invalid body-weight-unit CSV fixture.
-
-## Validation recorded on the source branch
-
-These results come from `cran-comments.md` and `cran-release-checklist.md`;
-they were not rerun while writing this description.
-
-- Debian 13 / R 4.5.3 / CRAN PKNCA 0.12.1: recorded package check with
-  **0 errors, 0 warnings, and 1 NOTE** about unavailable time verification.
-- Recorded packaged suite: **4,262 passing expectations**, no failures or
-  warnings, and two explicit skips. Additional focused checks cover namespace
-  registration, excretion, and interval compatibility.
-- Recorded lint and roxygen checks passed; installed-app startup and namespace
-  use were checked with the app directory read-only. Compatibility checks also
-  exercised development PKNCA 0.12.1.9003.
-
-## Remaining review before submission
-
-- Run final platform and R-devel checks, remote CRAN incoming/URL checks on a
-  permitted network, and scientific acceptance testing; refresh release evidence.
-- Review the final version, NEWS, maintainer details, and submission comments.
-- The excretion manual guide references `excretion-valid.csv`, but that fixture
-  is absent from the final branch; restore it or update the guide before relying
-  on that paired-data procedure.
-
-This branch prepares a release candidate; it does not submit or tag a release.
+Full slide rendering was not verified because the existing Quarto launcher lacks its Deno helper. ZIP utility regressions and package examples passed.

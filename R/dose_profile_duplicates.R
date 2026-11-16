@@ -12,6 +12,9 @@
 #' @param afrlt Column name for time from the first dose.
 #' @param nrrlt Column name for the numeric relative time.
 #' @param nfrlt Column name for the nominal relative time.
+#' @param time_unit Optional time unit (one value or one per row). By default,
+#'   uses `RRLTU` when present, otherwise hours for legacy inputs. Units must be
+#'   consistent within each subject/analyte dosing series.
 #'
 #' @returns A data frame with adjusted concentration data, including:
 #'   - Duplicated pre-dose values assigned to the previous dose.
@@ -41,7 +44,8 @@ dose_profile_duplicates <- function(conc_data,
                                     arrlt = "ARRLT",
                                     afrlt = "AFRLT",
                                     nrrlt = "NRRLT",
-                                    nfrlt = "NFRLT") {
+                                    nfrlt = "NFRLT",
+                                    time_unit = NULL) {
 
   dosno_sym <- sym(dosno)
 
@@ -53,6 +57,9 @@ dose_profile_duplicates <- function(conc_data,
              mutate(IX = as.character(seq_len(n()))) %>%
              ungroup())
   }
+
+  # Convert the physical four-hour window into the input's time units.
+  predose_window <- .predose_window(conc_data, groups, dosno, time_unit)
 
   # Determine dose_time and nominal_dose_time per profile group
   dose_times <- conc_data %>%
@@ -94,7 +101,8 @@ dose_profile_duplicates <- function(conc_data,
     mutate(
       !!dosno := prev_dosno,
       !!sym(arrlt) := !!sym(arrlt) + interval_prev,
-      !!sym(nrrlt) := !!sym(nrrlt) + nom_interval_prev
+      !!sym(nrrlt) := !!sym(nrrlt) + nom_interval_prev,
+      across(any_of("TIME_DOSE"), ~ !!sym(afrlt) - !!sym(arrlt))
     ) %>%
     select(-prev_dosno, -next_dosno, -interval_prev, -interval_next,
            -nom_interval_prev, -nom_interval_next, -dose_time,
@@ -108,22 +116,28 @@ dose_profile_duplicates <- function(conc_data,
     filter(!is.na(prev_dosno)) %>%
     mutate(!!dosno := prev_dosno)
 
-  # Duplicate last value of previous dose as predose of next dose
+  # Select the latest eligible sample by time, never by physical row order.
   last_values <- conc_data %>%
-    semi_join(missing_predose, by = c(groups)) %>%
-    group_by(across(all_of(groups))) %>%
-    slice_tail(n = 1) %>%
-    ungroup() %>%
+    mutate(.predose_window = predose_window) %>%
+    semi_join(missing_predose, by = groups) %>%
     left_join(dose_order, by = groups) %>%
+    filter(
+      is.finite(!!sym(afrlt)),
+      !!sym(afrlt) <= next_dose_time,
+      !!sym(afrlt) >= next_dose_time - .predose_window
+    ) %>%
+    group_by(across(all_of(groups))) %>%
+    slice_max(order_by = !!sym(afrlt), n = 1, with_ties = TRUE) %>%
+    ungroup() %>%
     mutate(
       !!dosno := next_dosno,
       !!sym(arrlt) := !!sym(afrlt) - next_dose_time,
-      !!sym(nrrlt) := !!sym(nfrlt) - next_nom_dose_time
+      !!sym(nrrlt) := !!sym(nfrlt) - next_nom_dose_time,
+      across(any_of("TIME_DOSE"), ~ !!sym(afrlt) - !!sym(arrlt))
     ) %>%
-    filter(!!sym(arrlt) >= -4) %>%
     select(-prev_dosno, -next_dosno, -interval_prev, -interval_next,
            -nom_interval_prev, -nom_interval_next, -dose_time,
-           -nom_dose_time, -next_dose_time, -next_nom_dose_time)
+           -nom_dose_time, -next_dose_time, -next_nom_dose_time, -.predose_window)
 
   # Combine all
   bind_rows(conc_data, predose_duplicates, last_values) %>%
@@ -131,4 +145,28 @@ dose_profile_duplicates <- function(conc_data,
     arrange(across(all_of(c(groups, arrlt)))) %>%
     mutate(IX = seq_len(n())) %>%
     ungroup()
+}
+
+# Return the four-hour window in each row's units; unknown or mixed units are unsafe.
+.predose_window <- function(data, groups, dosno, time_unit) {
+  if (is.null(time_unit)) {
+    time_unit <- if ("RRLTU" %in% names(data)) data$RRLTU else "hour"
+  }
+  if (!length(time_unit) %in% c(1L, nrow(data))) {
+    stop("time_unit must contain one unit or one unit per row.")
+  }
+  time_unit <- rep(time_unit, length.out = nrow(data))
+  factor <- get_conversion_factor(time_unit, "hour")
+  if (any(!is.finite(factor) | factor <= 0)) {
+    stop("Predose duplication requires recognized time units convertible to hours.")
+  }
+  unit_data <- data[, setdiff(groups, dosno), drop = FALSE]
+  unit_data$.time_factor <- factor
+  inconsistent <- unit_data %>%
+    group_by(across(all_of(setdiff(groups, dosno)))) %>%
+    summarise(.unit_count = n_distinct(!!sym(".time_factor")), .groups = "drop")
+  if (any(inconsistent$.unit_count > 1L)) {
+    stop("Time units must be consistent within each subject/analyte dosing series.")
+  }
+  4 / factor
 }

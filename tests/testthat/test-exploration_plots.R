@@ -629,3 +629,41 @@ describe("filter_by_list:", {
     expect_true(nrow(result) < nrow(conc_data))
   })
 })
+
+describe("dose-profile exploration backfill", {
+  it("backfills in absolute time before displaying hours or minutes since dose", {
+    for (unit in c("hours", "minutes")) {
+      fixture <- testthat::test_path("..", "manual", "data", paste0("predose-", unit, ".csv"))
+      data <- PKNCA_create_data_object(read_pk(fixture))
+      factor <- if (unit == "minutes") 60 else 1
+      result <- process_data_individual(
+        data, filtering_list = list(ATPTREF = "DOSE2"),
+        use_time_since_last_dose = TRUE, show_dose = TRUE
+      )
+      selected <- result[result$AVAL == 80, ]
+      expect_equal(nrow(selected), 1)
+      expect_equal(selected$AFRLT, -2 * factor)
+      expect_equal(selected$ARRLT, -2 * factor)
+      expect_equal(selected$TIME_DOSE, 0)
+      expect_false(any(result$AVAL == 70))
+      absolute <- process_data_individual(
+        data, filtering_list = list(ATPTREF = "DOSE2"), show_dose = TRUE
+      )
+      selected <- absolute[absolute$AVAL == 80, ]
+      expect_equal(selected$AFRLT, 8 * factor)
+      expect_equal(selected$TIME_DOSE, 10 * factor)
+    }
+  })
+})
+
+describe("profile plotting with PKNCA unit-column metadata", {
+  it("keeps mixed-unit facet conversion compatible after backfilling", {
+    data <- FIXTURE_PKNCA_RES$data
+    expect_true(!is.null(attr(data$conc$columns$concu, "unit_type")))
+    plot <- exploration_individualplot(
+      data, color_by = "USUBJID", facet_by = "ATPTREF",
+      filtering_list = list(ATPTREF = 1), ylog_scale = TRUE
+    )
+    expect_s3_class(plot, "ggplot")
+  })
+})

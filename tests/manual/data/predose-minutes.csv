@@ -1,0 +1,6 @@
+"STUDYID","USUBJID","PCSPEC","PARAM","METABFL","AFRLT","NFRLT","ARRLT","NRRLT","RRLTU","AVAL","AVALU","DOSETRT","DOSEA","DOSEU","ROUTE","ADOSEDUR","ATPTREF","TRTRINT"
+"PREDOSE","S1","SERUM","DrugA","N",0,0,0,0,"min",100,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",600
+"PREDOSE","S1","SERUM","DrugA","N",420,420,420,420,"min",70,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",600
+"PREDOSE","S1","SERUM","DrugA","N",480,480,480,480,"min",80,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",600
+"PREDOSE","S1","SERUM","DrugA","N",600,600,0,0,"min",100,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE2",600
+"PREDOSE","S1","SERUM","DrugA","N",660,660,60,60,"min",90,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE2",600

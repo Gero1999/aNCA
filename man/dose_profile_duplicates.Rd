@@ -11,7 +11,8 @@ dose_profile_duplicates(
   arrlt = "ARRLT",
   afrlt = "AFRLT",
   nrrlt = "NRRLT",
-  nfrlt = "NFRLT"
+  nfrlt = "NFRLT",
+  time_unit = NULL
 )
 }
 \arguments{
@@ -29,6 +30,10 @@ dose_profile_duplicates(
 \item{nrrlt}{Column name for the numeric relative time.}
 
 \item{nfrlt}{Column name for the nominal relative time.}
+
+\item{time_unit}{Optional time unit (one value or one per row). By default,
+uses \code{RRLTU} when present, otherwise hours for legacy inputs. Units must be
+consistent within each subject/analyte dosing series.}
 }
 \value{
 A data frame with adjusted concentration data, including:
