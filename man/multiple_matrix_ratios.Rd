@@ -39,7 +39,10 @@ the second specimen type(s) in the matrix_col.}
 A data frame containing the ratios.
 }
 \description{
-The ratios are calculated as specimen1 / specimen 2.
+The ratios are calculated as specimen1 / specimen 2 after converting the
+denominator concentration to numerator units. Original values and units remain
+in the result. Missing/empty or incompatible units, infinite concentrations,
+and zero denominators raise an error; pairs with missing concentrations are omitted.
 }
 \examples{
 data <- data.frame(

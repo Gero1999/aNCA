@@ -745,3 +745,56 @@ describe("calculate_ratio_app with interval parameters", {
     expect_equal(sort(r2$PPORRES), sort(r1$PPORRES) * 100, tolerance = 1e-6)
   })
 })
+
+describe("matrix ratio unit normalization", {
+  pair <- data.frame(USUBJID = "A", TIME = 1, MATRIX = c("BLOOD", "PLASMA"),
+                     CONC = c(1, 1000), UNITS = c("ug/mL", "ng/mL"))
+  ratio <- function(d) {
+    multiple_matrix_ratios(d, "MATRIX", "CONC", "UNITS", c("TIME", "USUBJID"),
+                           "BLOOD", "PLASMA")
+  }
+
+  it("compares equivalent concentrations and retains original values and units", {
+    result <- ratio(pair)
+    expect_equal(result$Ratio, 1)
+    expect_equal(result$Spec1_Value, 1)
+    expect_equal(result$Spec2_Value, 1000)
+    expect_equal(result$Spec1_Units, "ug/mL")
+    expect_equal(result$Spec2_Units, "ng/mL")
+    reversed <- multiple_matrix_ratios(
+      pair, "MATRIX", "CONC", "UNITS", c("TIME", "USUBJID"), "PLASMA", "BLOOD"
+    )
+    expect_equal(reversed$Ratio, 1)
+    duplicate_groups <- multiple_matrix_ratios(
+      pair, "MATRIX", "CONC", "UNITS", c("TIME", "TIME", "USUBJID"), "BLOOD", "PLASMA"
+    )
+    expect_equal(duplicate_groups$Ratio, 1)
+  })
+
+  it("rejects incompatible units and undefined divisions", {
+    invalid <- pair
+    invalid$UNITS[2] <- "hour"
+    expect_error(ratio(invalid), "concentration units must be compatible")
+    invalid <- pair
+    invalid$CONC[2] <- 0
+    expect_error(ratio(invalid), "denominators nonzero")
+    invalid$CONC[2] <- Inf
+    expect_error(ratio(invalid), "concentrations must be finite")
+  })
+
+  it("rejects absent concentration units even when both labels match", {
+    for (labels in list(c(NA_character_, NA_character_), c("", ""), c(" ", " "),
+                        c("ug/mL", NA_character_))) {
+      invalid <- pair
+      invalid$UNITS <- labels
+      expect_error(ratio(invalid), "units must be provided for both specimens")
+    }
+  })
+
+  it("keeps existing missing-pair behavior and handles empty matches", {
+    missing <- pair
+    missing$CONC[2] <- NA_real_
+    expect_equal(nrow(ratio(missing)), 0)
+    expect_equal(nrow(ratio(pair[1, ])), 0)
+  })
+})

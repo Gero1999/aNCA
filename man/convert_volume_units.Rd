@@ -46,7 +46,10 @@ This is necessary for PKNCA calculation of excretion parameters.
 \details{
 It uses the \pkg{units} package to perform unit-safe conversions. If a direct conversion
 between volume and the concentration denominator is not possible (e.g., between mass and volume),
-a fallback conversion is attempted using a neutral density of \code{1 (target_unit / original_unit)}.
+a mass/volume conversion assumes a density of \verb{1 g/mL} and reports that assumption.
+This fixed physical density is converted to the requested units; other incompatible
+dimensions are not converted. Supply measured mass/volume data when this assumption
+is not scientifically appropriate.
 The function modifies only the \code{VOLUME} and \code{VOLUMEU} columns when necessary and leaves all
 other data unchanged.
 
@@ -54,8 +57,8 @@ The function:
 \enumerate{
 \item Parses the denominator from \code{AVALU} (e.g., "ug/mL" → "mL").
 \item Attempts to convert the corresponding \code{VOLUME} to that unit.
-\item If direct conversion fails, assumes a neutral density of 1
-(i.e., \verb{1 unit_target / unit_original}) and retries.
+\item If mass/volume conversion is needed, assumes a density of \verb{1 g/mL}
+and reports that assumption before converting to the target unit.
 \item Leaves units unchanged for non-excreta samples or already-valid combinations.
 }
 

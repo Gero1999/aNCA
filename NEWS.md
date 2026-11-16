@@ -1,3 +1,10 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Matrix concentration ratios now convert compatible units before division and reject missing or incompatible units and invalid denominators.
+* Collection mass/volume conversions use a consistent assumed density of 1 g/mL, preserving physical amounts across equivalent units.
+
 # aNCA 0.2.0
 
 ## Data & settings

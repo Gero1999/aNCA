@@ -15,10 +15,16 @@ get_conversion_factor <- function(initial_unit, target_unit) {
   initial_unit <- rep_len(initial_unit, max(length(initial_unit), length(target_unit)))
   target_unit <- rep_len(target_unit, length(initial_unit))
 
-  vapply(seq_along(initial_unit), function(i) {
+  # Integer-coded pairs cannot collide when unit names contain delimiters.
+  pair_keys <- paste(
+    match(initial_unit, unique(initial_unit)),
+    match(target_unit, unique(target_unit)), sep = ":"
+  )
+  first_pair <- which(!duplicated(pair_keys))
+  factors <- vapply(first_pair, function(i) {
     tryCatch({
-      conversion <- units::set_units(
-        units::set_units(1, initial_unit[i], mode = "standard"),
+      conversion <- set_units(
+        set_units(1, initial_unit[i], mode = "standard"),
         target_unit[i], mode = "standard"
       )
       unname(as.numeric(conversion))
@@ -30,6 +36,7 @@ get_conversion_factor <- function(initial_unit, target_unit) {
       }
     })
   }, FUN.VALUE = numeric(1))
+  factors[match(pair_keys, pair_keys[first_pair])]
 }
 
 
@@ -178,7 +185,10 @@ convert_to_iso8601_duration <- Vectorize(function(value, unit) {
 #'
 #' It uses the \pkg{units} package to perform unit-safe conversions. If a direct conversion
 #' between volume and the concentration denominator is not possible (e.g., between mass and volume),
-#' a fallback conversion is attempted using a neutral density of `1 (target_unit / original_unit)`.
+#' a mass/volume conversion assumes a density of `1 g/mL` and reports that assumption.
+#' This fixed physical density is converted to the requested units; other incompatible
+#' dimensions are not converted. Supply measured mass/volume data when this assumption
+#' is not scientifically appropriate.
 #' The function modifies only the `VOLUME` and `VOLUMEU` columns when necessary and leaves all
 #' other data unchanged.
 #'
@@ -208,8 +218,8 @@ convert_to_iso8601_duration <- Vectorize(function(value, unit) {
 #' \enumerate{
 #'   \item Parses the denominator from `AVALU` (e.g., "ug/mL" → "mL").
 #'   \item Attempts to convert the corresponding `VOLUME` to that unit.
-#'   \item If direct conversion fails, assumes a neutral density of 1
-#'    (i.e., `1 unit_target / unit_original`) and retries.
+#'   \item If mass/volume conversion is needed, assumes a density of `1 g/mL`
+#'    and reports that assumption before converting to the target unit.
 #'   \item Leaves units unchanged for non-excreta samples or already-valid combinations.
 #' }
 #'
@@ -259,10 +269,7 @@ convert_volume_units <- function(df,
       u_vol_new <- tryCatch(
         set_units(u_vol, denom_unit, mode = "standard"),
         error = function(e) {
-          # Attempt indirect conversion via neutral density
-          density_unit <- paste0(denom_unit, "/", volu)
-          density <- set_units(1, density_unit, mode = "standard")
-          u_vol * density
+          .convert_collection_density(u_vol, volu, denom_unit)
         }
       )
       df[[volume]][i] <- drop_units(u_vol_new)
@@ -293,6 +300,21 @@ convert_volume_units <- function(df,
         }
       )
     )
+}
+
+# Apply the documented density only between physical mass and volume units.
+.convert_collection_density <- function(value, original_unit, target_unit) {
+  volume_to_mass <- is.finite(get_conversion_factor(original_unit, "mL")) &&
+    is.finite(get_conversion_factor(target_unit, "g"))
+  mass_to_volume <- is.finite(get_conversion_factor(original_unit, "g")) &&
+    is.finite(get_conversion_factor(target_unit, "mL"))
+  if (!volume_to_mass && !mass_to_volume) {
+    stop("Only mass/volume conversions support the assumed collection density.")
+  }
+  density <- set_units(1, "g/mL", mode = "standard")
+  converted <- if (volume_to_mass) value * density else value / density
+  message("Collection mass/volume conversion assumes a density of 1 g/mL.")
+  set_units(converted, target_unit, mode = "standard")
 }
 
 #'Log conversions applied to dataset

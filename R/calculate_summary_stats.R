@@ -67,11 +67,8 @@ calculate_summary_stats <- function(data, input_groups = "ATPTREF") {
   # Return a summary table with statistics
   data %>%
 
-    # Only use unique records and calculate the conversion factor between PPSTRESU/PPORRESU
+    # Only use unique records; calculate the final target conversion below.
     unique() %>%
-    mutate(
-      conv_factor = get_conversion_factor(PPORRESU, PPSTRESU)
-    ) %>%
 
     # Group by the input groups and the parameter test codes
     group_by(across(all_of(c(input_groups, "PPTESTCD")))) %>%

@@ -457,3 +457,48 @@ describe("changed_units", {
     expect_equal(nrow(changed_units(empty)), 0)
   })
 })
+
+describe("unit-pair conversion reuse", {
+  it("preserves pair ordering, recycling, missing values and identity fallbacks", {
+    from <- c("hour", "ng/mL", "unknown:unit", NA_character_, "hour", "ng/mL")
+    to <- c("min", "mg/L", "unknown:unit", NA_character_, "min", "mg/L")
+    expect_equal(get_conversion_factor(from, to), c(60, 0.001, 1, 1, 60, 0.001))
+    expect_equal(get_conversion_factor("hour", c("min", "s", "min")), c(60, 3600, 60))
+    expect_equal(get_conversion_factor(character(), character()), numeric())
+    expect_true(is.na(get_conversion_factor(character(), "g")))
+    expect_equal(get_conversion_factor(c(a = "g", b = "kg"), "mg"), c(1000, 1e6))
+  })
+
+  it("does not confuse distinct unit pairs containing delimiters", {
+    expect_equal(
+      get_conversion_factor(c("a:b", "a", "a:b"), c("a:b", "b:a:b", "a:b")),
+      c(1, NA_real_, 1)
+    )
+  })
+})
+
+describe("physical collection density", {
+  it("preserves recovered amount when equivalent concentration units change", {
+    d <- data.frame(PCSPEC = "FECES", AVAL = c(1, 1000),
+                    AVALU = c("mg/g", "mg/kg"), VOLUME = 1, VOLUMEU = "mL")
+    expect_message(v <- convert_volume_units(d), "density of 1 g/mL")
+    expect_equal(v$VOLUME, c(1, 0.001))
+    expect_equal(v$VOLUMEU, c("g", "kg"))
+    expect_equal(v$AVAL * v$VOLUME, c(1, 1))
+    expect_equal(v$AMOUNTU, c("mg", "mg"))
+  })
+
+  it("preserves physical volumes when converting collected mass in either unit", {
+    d <- data.frame(AVALU = "mg/mL", VOLUME = c(1, 0.001), VOLUMEU = c("g", "kg"))
+    expect_message(v <- convert_volume_units(d), "density of 1 g/mL")
+    expect_equal(v$VOLUME, c(1, 1))
+    expect_equal(v$VOLUMEU, c("mL", "mL"))
+  })
+
+  it("does not fabricate conversions between unrelated physical dimensions", {
+    d <- data.frame(AVALU = "mg/hour", VOLUME = 1, VOLUMEU = "mL")
+    expect_warning(v <- convert_volume_units(d), "Only mass/volume conversions")
+    expect_equal(v$VOLUME, 1)
+    expect_equal(v$VOLUMEU, "mL")
+  })
+})

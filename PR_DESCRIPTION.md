@@ -1,104 +1,94 @@
-# Prepare aNCA 0.2.0 for CRAN review and fix session/calculation recovery
+# Keep matrix ratios and collection amounts invariant across equivalent units
 
-## Summary
+## How to test
 
-Prepare the 0.2.0 release candidate and address startup, session restoration,
-excretion, and PKNCA compatibility issues found during CRAN preparation.
-The branch also expands regression coverage and records release validation and
-remaining submission work.
+1. Launch this checkout with `devtools::load_all(); aNCA::run_app()`.
+2. **Data → Upload:** choose `tests/manual/data/matrix-unit-equivalence.csv`.
+   Keep the same-name mappings, apply no filters, and continue to Preview.
+3. Open **NCA → Setup** and select **DrugA**, both specimens, and a dose
+   profile if the controls are not already populated. Open
+   **Additional Analysis → Concentration Ratios** and add a ratio pair:
+   **BLOOD / PLASMA**. Every sample ratio and geometric mean must be **1**.
+   Source values stay **1 ug/mL** and **1000 ng/mL** in the result table.
+4. Reverse the pair: ratios must still be **1**. Download the table and verify
+   the same values. Compare with the base branch, which reports **0.001** for
+   BLOOD / PLASMA.
+5. To check recovery, edit a copy of the CSV so PLASMA has `hour` as AVALU,
+   a blank AVALU, or a zero concentration. Upload it and recreate the pair: a clear error
+   notification appears, the app stays connected, and no previous ratio table
+   remains available for export. Correct the data and retry.
 
-This summary covers the net changes in `chore/cran-review-fixes` at `aea6b583`
-relative to `main` at `1a1c99bd` (41 files). Features already present on `main`
-are not additional changes introduced by this branch.
+For the collection-density correction, the smallest exact check is in R:
 
-## Changes
+```r
+d <- data.frame(AVAL = c(1, 1000), AVALU = c("mg/g", "mg/kg"),
+                VOLUME = 1, VOLUMEU = "mL")
+v <- aNCA::convert_volume_units(d)
+v$AVAL * v$VOLUME  # both 1 mg, rather than 1 mg and 1000 mg
+```
 
-### Release packaging and documentation
+No separate density dataset is needed. The automatic fallback remains an
+**assumption of 1 g/mL**, not a measured specimen density. Supply measured
+collection mass/volume data when that assumption is inappropriate.
 
-- Set the package version to **0.2.0** and publish the existing development NEWS
-  under that release, updating entries for the fixes below.
-- Include NEWS in source packages; exclude Sass cache metadata, local ZIPs,
-  generated test plots, application logs, the release checklist, and historical
-  validation reports. Vignettes remain excluded.
-- Add a release checklist and update CRAN comments with reproduction commands,
-  validation evidence, dependency compatibility findings, and submission tasks.
-- Clarify that Roche's historical validation applies to version 0.1.0.9004,
-  rather than the current release; correct internal documentation references.
+## Description
 
-### Startup, logging, and exported scripts
+Addresses review findings **02, 04, and 16** together because all use the unit
+conversion layer.
 
-- Store application logs in a writable temporary directory by default, with an
-  `aNCA_LOG_DIR` override. Rotate only matching aNCA log files, retain at most
-  five, and preserve unrelated files and directories.
-- Restore the caller's `shiny.maxRequestSize` option when `run_app()` exits,
-  including when startup fails.
-- Stop generated scripts with explicit installation instructions when aNCA is
-  missing, instead of automatically installing packages.
+- Matrix ratios convert denominator concentrations to numerator units before
+  division, retain original values/units, and reject missing/blank or incompatible units,
+  infinite concentrations, and zero denominators. Missing pairs remain omitted.
+- Ratio errors become recoverable app notifications and clear the stored export
+  result. Duplicate grouping names are normalized before the pair join.
+- Collection conversion uses one physical density, **1 g/mL**, consistently in
+  both mass/volume directions and reports the assumption. Other incompatible
+  dimensions no longer receive an invented conversion.
+- Conversion factors are computed once per distinct unit pair within a call,
+  then mapped back without an unbounded global cache. Integer-coded pair keys
+  avoid collisions from unit text. The unused first summary conversion is removed.
 
-### Session restoration and excretion analysis
+The existing 3-significant-digit ratio presentation is preserved. This branch
+changes computed values where previous results depended on unit notation; those
+outputs should be recalculated.
 
-- Reset readiness on every settings restore so repeated restores complete and
-  dismiss the loading dialog.
-- Automatically select urine matrices regardless of capitalization or surrounding
-  whitespace.
-- Validate matrix, parameter, and interval selections; the end-time column;
-  sample collection times; and body-weight values and mass units before
-  calculating. Warn when no matching intervals remain.
-- Catch excretion calculation errors, show actionable notifications, and keep
-  the session available for corrected inputs and resubmission.
-- Use explicit units-package calls for body-weight adjustment and remove unused
-  `DOSNOA`/`VOLUME` interval metadata while retaining actual sample volumes.
+## Validation
 
-### PKNCA compatibility and slope recovery
+- Final focused scientific/API/module suite: **252 passed**, no failures or warnings.
+- Chromium production-module check: ratios **1**, visible invalid-unit notification,
+  export cache cleared, then successful recovery without disconnection. Module
+  regressions also cover NA and blank unit labels with notification/cache recovery.
+- CSV roundtrip builds a PKNCA object and produces **88 matching ratios of 1**.
+- Full-package lint: **0 findings**; final touched-file lint after the unit-label
+  guard: **0 findings**. Documentation generated with roxygen2 7.3.3.
+- `devtools::check()` with `--no-tests --no-manual`, CRAN mode off:
+  **0 errors, 0 warnings, 0 notes**, rerun after the final unit-label guard.
+  Tests are validated separately below.
+- 10,000 repeated unit pairs: baseline **15.162 s**, optimized **0.011 s**,
+  identical output. These local timings were recorded under concurrent load.
+- Full development suite before the final missing-unit guard: **4,364 passed**,
+  **0 failures/warnings**, **3 skips** (browser opt-in, installed-only namespace,
+  full-session slide integration). Final guard regressions are covered in the
+  focused suite and final package check rather than rerunning that broad suite.
 
-- Register excretion extensions when the namespace loads, supporting
-  namespace-only use and sessions with only base R attached without replacing
-  native upstream definitions.
-- Export and document the callback aliases `anca_calc_ertlst`,
-  `anca_calc_ertmax`, `anca_calc_volpk`, and `anca_calc_fe` to support older
-  PKNCA callback lookup.
-- Remove incidental `VOLUME` interval metadata from normal NCA updates unless
-  explicitly retained or used for concentration grouping. Preserve sample
-  volumes and compatibility with stricter development PKNCA validation.
-- Catch slope-generation errors, clear failed plots and stale slope results,
-  and allow calculation to recover after data or settings are corrected.
+Quarto deck rendering was not validated. The environment's Quarto launcher
+reports a missing Deno executable; this did not affect the completed package check.
 
-### Tests and reproducibility
+## Contributor checklist
 
-- Require testthat >= 3.2.0 and guard individual tests that need optional
-  packages rather than disabling the suite.
-- Replace the unconditionally skipped browser runner with an opt-in installed-app
-  smoke test (`ANCA_RUN_BROWSER_TESTS=true`) covering connection, upload controls,
-  and absence of Shiny output errors.
-- Exercise lazy-loaded SDTM example datasets in installed packages; add regression
-  tests for logging, option cleanup, generated scripts, namespace loading,
-  repeated restores, excretion validation/recovery, and interval/slope handling.
-- Explicitly assert the expected TLG warning and accept only the two specific
-  empty-data warnings introduced by development PKNCA.
-- Add manual reproduction guides for restoration, excretion, and interval
-  metadata, plus an invalid body-weight-unit CSV fixture.
+- [x] Value-level regressions cover equivalent and incompatible units, density,
+  recycling, missing/identity conversions, and matrix calculation recovery.
+- [x] Public documentation regenerated with roxygen2 7.3.3.
+- [x] User-visible scientific corrections recorded in NEWS; version 0.2.0.9001.
+- [x] Full-suite baseline and final focused/lint/package checks recorded above.
 
-## Validation recorded on the source branch
+## Notes to reviewer
 
-These results come from `cran-comments.md` and `cran-release-checklist.md`;
-they were not rerun while writing this description.
-
-- Debian 13 / R 4.5.3 / CRAN PKNCA 0.12.1: recorded package check with
-  **0 errors, 0 warnings, and 1 NOTE** about unavailable time verification.
-- Recorded packaged suite: **4,262 passing expectations**, no failures or
-  warnings, and two explicit skips. Additional focused checks cover namespace
-  registration, excretion, and interval compatibility.
-- Recorded lint and roxygen checks passed; installed-app startup and namespace
-  use were checked with the app directory read-only. Compatibility checks also
-  exercised development PKNCA 0.12.1.9003.
-
-## Remaining review before submission
-
-- Run final platform and R-devel checks, remote CRAN incoming/URL checks on a
-  permitted network, and scientific acceptance testing; refresh release evidence.
-- Review the final version, NEWS, maintainer details, and submission comments.
-- The excretion manual guide references `excretion-valid.csv`, but that fixture
-  is absent from the final branch; restore it or update the guide before relying
-  on that paired-data procedure.
-
-This branch prepares a release candidate; it does not submit or tag a release.
+The CSV fixture is a synthetic matched-unit variant of bundled example data,
+created only for the app check above. No source data or analysis is pushed.
+Full-app upload steps are supplied for review. The production Concentration
+Ratios module was exercised in Chromium: equivalent units produced ratios of 1,
+invalid units showed a notification and cleared export state, and corrected units
+recovered without disconnecting. Automated fixture/calculation and module tests
+provide additional directly executed evidence. The performance claim is
+limited to the recorded conversion benchmark, not an end-to-end app guarantee.

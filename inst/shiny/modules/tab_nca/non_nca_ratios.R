@@ -158,7 +158,7 @@ non_nca_ratio_server <- function(id, data, grouping_vars) {
       # Trigger this reactive when any selection changes
       reactiveValuesToList(selections)
 
-      all_ratios <- purrr::map_dfr(seq_len(pair_counter()), function(i) {
+      all_ratios <- tryCatch(purrr::map_dfr(seq_len(pair_counter()), function(i) {
         spec1 <- selections[[paste0("spec1_", i)]]
         spec2 <- selections[[paste0("spec2_", i)]]
 
@@ -176,9 +176,12 @@ non_nca_ratio_server <- function(id, data, grouping_vars) {
         } else {
           NULL
         }
+      }), error = function(e) {
+        showNotification(conditionMessage(e), type = "error", duration = NULL)
+        NULL
       })
 
-      if (nrow(all_ratios) == 0) return(NULL)
+      if (is.null(all_ratios) || nrow(all_ratios) == 0) return(NULL)
       return(all_ratios)
     }) %>%
       debounce(500) # Wait 500ms after user stops changing inputs
@@ -209,8 +212,9 @@ non_nca_ratio_server <- function(id, data, grouping_vars) {
 
     # Save the results in the output folder
     observeEvent(results(), {
-      session$userData$results$additional_analysis$matrix_ratios <- full_output()
-    })
+      session$userData$results$additional_analysis$matrix_ratios <-
+        if (is.null(results())) NULL else full_output()
+    }, ignoreNULL = FALSE)
   })
 }
 

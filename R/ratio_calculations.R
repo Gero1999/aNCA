@@ -3,7 +3,10 @@
 #' based on the shared time points for each matrix concentration sample.
 #' The user can input multiple tissues for which ratios should be calculated.
 #'
-#' The ratios are calculated as specimen1 / specimen 2.
+#' The ratios are calculated as specimen1 / specimen 2 after converting the
+#' denominator concentration to numerator units. Original values and units remain
+#' in the result. Missing/empty or incompatible units, infinite concentrations,
+#' and zero denominators raise an error; pairs with missing concentrations are omitted.
 #'
 #' @param data A data frame containing the concentration data.
 #' @param matrix_col A character string specifying the column name for the matrix type.
@@ -35,6 +38,7 @@
 multiple_matrix_ratios <- function(data, matrix_col, conc_col, units_col,
                                    groups = c("NFRLT", "USUBJID"),
                                    spec1, spec2) {
+  groups <- unique(groups)
   # Separate Samples
   df_spec1 <- data %>%
     filter(!!sym(matrix_col) %in% spec1) %>%
@@ -54,16 +58,26 @@ multiple_matrix_ratios <- function(data, matrix_col, conc_col, units_col,
     ) %>%
     select(all_of(groups), Spec2_Value, Spec2_Label, Spec2_Units)
 
-  # Merge Data
-  left_join(df_spec1, df_spec2, by = groups, relationship = "many-to-many") %>%
-    filter(!is.na(Spec1_Value) & !is.na(Spec2_Value)) %>%
-    rowwise() %>%
+  # Preserve source values and units, converting only the denominator for the ratio.
+  pairs <- left_join(df_spec1, df_spec2, by = groups, relationship = "many-to-many") %>%
+    filter(!is.na(Spec1_Value) & !is.na(Spec2_Value), Spec1_Label != Spec2_Label)
+  if (any(is.na(pairs$Spec1_Units) | is.na(pairs$Spec2_Units) |
+            !nzchar(trimws(pairs$Spec1_Units)) | !nzchar(trimws(pairs$Spec2_Units)))) {
+    stop("Cannot calculate matrix ratios: concentration units must be provided for both specimens.")
+  }
+  factors <- get_conversion_factor(pairs$Spec2_Units, pairs$Spec1_Units)
+  if (any(!is.finite(factors))) {
+    stop("Cannot calculate matrix ratios: concentration units must be compatible.")
+  }
+  if (any(!is.finite(pairs$Spec1_Value) | !is.finite(pairs$Spec2_Value) |
+            pairs$Spec2_Value == 0)) {
+    stop("Cannot calculate matrix ratios: concentrations must be finite and denominators nonzero.")
+  }
+  pairs %>%
     mutate(
       Ratio_Type = paste0(Spec1_Label, "/", Spec2_Label),
-      Ratio = Spec1_Value / Spec2_Value,
-      Ratio = signif(Ratio, 3)
+      Ratio = signif(Spec1_Value / (Spec2_Value * factors), 3)
     ) %>%
-    filter(Spec1_Label != Spec2_Label) %>%
     select(all_of(groups), Ratio_Type, Spec1_Value, Spec1_Units, Spec2_Value, Spec2_Units, Ratio)
 }
 
