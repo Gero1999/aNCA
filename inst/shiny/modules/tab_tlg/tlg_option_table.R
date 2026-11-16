@@ -106,18 +106,10 @@ tlg_option_table_server <- function(id, opt_def, data, reset_trigger) {
     }) %>%
       shiny::bindEvent(list(output_table(), refresh_reactable()))
 
-    #' Attach observers that listen to any changes provided by the user.
-    observe({
-      req(output_table())
-      purrr::walk(names(opt_def$cols), function(colname) {
-        observeEvent(input[[colname]], {
-          edit <- input[[colname]]
-          edited_vars <- edits_table()
-          edited_vars[edit$row, edit$column] <- edit$value
-          edits_table(edited_vars)
-        })
-      })
-    })
+    #' Column handlers are stable while the user edits, confirms, or resets values.
+    edit_observers <- .bind_table_edits(
+      input, edits_table, reactive(names(opt_def$cols)), session = session
+    )
 
     #' Add a new row to the edit table
     observeEvent(input$add_row, {
@@ -150,13 +142,16 @@ tlg_option_table_server <- function(id, opt_def, data, reset_trigger) {
       removeModal()
       reset_reactable_memory()
       edits_table(output_table())
+      refresh_reactable(refresh_reactable() + 1)
     })
 
     #' Reset the input to default value upon reset_trigger
     observeEvent(reset_trigger(), {
       reset_reactable_memory()
+      edits_table(default_table)
       output_table(default_table)
-    })
+      refresh_reactable(refresh_reactable() + 1)
+    }, ignoreInit = TRUE)
 
     output_table
   })

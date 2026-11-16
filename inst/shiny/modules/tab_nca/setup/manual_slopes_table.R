@@ -220,18 +220,11 @@ manual_slopes_table_server <- function(
     }) %>%
       shiny::bindEvent(refresh_reactable())
 
-    # Dynamically attach observers for each editable column in the table
-    observe({
-      req(manual_slopes())
-      purrr::walk(colnames(manual_slopes()), function(colname) {
-        observeEvent(input[[paste0("edit_", colname)]], {
-          edit <- input[[paste0("edit_", colname)]]
-          edited_slopes <- manual_slopes()
-          edited_slopes[edit$row, edit$column] <- edit$value
-          manual_slopes(edited_slopes)
-        })
-      })
-    })
+    # Reconcile handlers only when the editable schema changes, not on cell edits.
+    edit_observers <- .bind_table_edits(
+      input, manual_slopes, reactive(names(manual_slopes())), prefix = "edit_",
+      session = session
+    )
 
     # Output: manual_slopes (reactiveVal) and refresh_reactable (for UI updates)
     list(

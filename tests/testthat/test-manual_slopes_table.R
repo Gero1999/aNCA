@@ -4,6 +4,7 @@ local({
   library(logger)
   library(reactable)
   library(reactable.extras)
+  source(system.file("shiny/functions/utils-table_edits.R", package = "aNCA"), local = TRUE)
   source(system.file("shiny/modules/tab_nca/setup/manual_slopes_table.R", package = "aNCA"),
          local = TRUE)
   reset_reactable_memory <- function(...) NULL
@@ -151,6 +152,36 @@ describe("manual slope rules during session restore", {
       {
         session$flushReact()
         expect_null(manual_slopes())
+        expect_false(session$isClosed())
+      }
+    )
+  })
+
+
+  it("restores saved rules after a cell edit without replaying the retained browser input", {
+    fixture <- manual_slopes_fixture()
+    override <- reactiveVal(fixture$rule)
+    shiny::testServer(
+      manual_slopes_table_server,
+      args = list(pknca_data = reactive(fixture$data), manual_slopes_override = override),
+      {
+        session$flushReact()
+        session$setInputs(edit_REASON = list(row = 1, column = "REASON", value = "Typed edit"))
+        expect_identical(manual_slopes()$REASON, "Typed edit")
+        second <- fixture$rule
+        second$RANGE <- "6.011"
+        second$REASON <- "Session B"
+        override(second)
+        session$flushReact()
+        expect_identical(manual_slopes(), second)
+        override(NULL)
+        session$flushReact()
+        expect_null(manual_slopes())
+        override(fixture$rule)
+        session$flushReact()
+        expect_identical(manual_slopes(), fixture$rule)
+        session$setInputs(edit_REASON = list(row = 1, column = "REASON", value = "New edit"))
+        expect_identical(manual_slopes()$REASON, "New edit")
         expect_false(session$isClosed())
       }
     )

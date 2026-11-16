@@ -4,6 +4,7 @@
 
 * Repeated session restores now replace or clear manual slope rules instead of retaining a previous session's exclusions.
 * Excretion tables and exports are cleared after a failed calculation or changed input data until a successful resubmission.
+* Resetting TLG table options now clears pending edits, so reopening and confirming the editor keeps the defaults.
 
 # aNCA 0.2.0
 

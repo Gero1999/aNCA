@@ -11,6 +11,7 @@ local({
     file.path(shiny_dir, "functions", "utils.R"),
     local = TRUE
   )
+  source(file.path(shiny_dir, "functions", "utils-table_edits.R"), local = TRUE)
   source(
     file.path(shiny_dir, "modules", "tab_tlg", "tlg_option_table.R"),
     local = TRUE
@@ -239,6 +240,12 @@ describe("tlg_option_table_server: reset_trigger", {
         trigger_count(1)
         session$flushReact()
         expect_equal(session$getReturned()()$col1[1], "A")
+        expect_equal(edits_table(), output_table())
+        session$setInputs(open_table = 1, confirm_changes = 2)
+        expect_equal(session$getReturned()()$col1[1], "A")
+        session$setInputs(col1 = list(row = 1, column = "col1", value = "CHANGED"))
+        session$setInputs(confirm_changes = 3)
+        expect_equal(session$getReturned()()$col1[1], "CHANGED")
       }
     )
   })
