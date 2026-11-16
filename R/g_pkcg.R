@@ -1,28 +1,31 @@
 #' Wrapper around aNCA::pkcg01() function. Calls the function with `LIN` scale argument.
 #' @param data Data to be passed into the plotting function.
+#' @param .lazy Internal app flag: defer group plots until requested.
 #' @param ...  Any other parameters to be passed into the plotting function.
-#' @returns ggplot2 object for pkcg01.
+#' @returns A list of plots, or deferred callable entries when `.lazy = TRUE`.
 #' @export
-g_pkcg01_lin <- function(data, ...) {
-  pkcg01(adnca = data, scale = "LIN", ...)
+g_pkcg01_lin <- function(data, ..., .lazy = FALSE) {
+  pkcg01(adnca = data, scale = "LIN", ..., .lazy = .lazy)
 }
 
 #' Wrapper around aNCA::pkcg01() function. Calls the function with `LOG` scale argument.
 #' @param data Data to be passed into the plotting function.
+#' @param .lazy Internal app flag: defer group plots until requested.
 #' @param ...  Any other parameters to be passed into the plotting function.
-#' @returns ggplot2 object for pkcg01.
+#' @returns A list of plots, or deferred callable entries when `.lazy = TRUE`.
 #' @export
-g_pkcg01_log <- function(data, ...) {
-  pkcg01(adnca = data, scale = "LOG", ...)
+g_pkcg01_log <- function(data, ..., .lazy = FALSE) {
+  pkcg01(adnca = data, scale = "LOG", ..., .lazy = .lazy)
 }
 
 #' Wrapper around aNCA::pkcg01() function. Calls the function with `SBS` scale argument.
 #' @param data Data to be passed into the plotting function.
+#' @param .lazy Internal app flag: defer group plots until requested.
 #' @param ...  Any other parameters to be passed into the plotting function.
-#' @returns ggplot2 object for pkcg01.
+#' @returns A list of plots, or deferred callable entries when `.lazy = TRUE`.
 #' @export
-g_pkcg01_sbs <- function(data, ...) {
-  pkcg01(adnca = data, scale = "SBS", ...)
+g_pkcg01_sbs <- function(data, ..., .lazy = FALSE) {
+  pkcg01(adnca = data, scale = "SBS", ..., .lazy = .lazy)
 }
 
 #' Generate PK Concentration-Time Profile Plots
@@ -56,7 +59,9 @@ g_pkcg01_sbs <- function(data, ...) {
 #' @param studyid         A character string specifying the study ID variable.
 #' @param trt_var         A character string specifying the treatment variable.
 #' @param plotly          Logical indicating whether to return plotly objects. Defaults to TRUE.
-#' @returns A list of ggplot or plotly objects for each unique group.
+#' @param .lazy Internal app flag: return deferred group entries for pagination.
+#' @returns A list of ggplot or plotly objects for each unique group. With the
+#'   internal `.lazy` flag, returns named callable entries instead.
 #' @importFrom dplyr mutate across rowwise ungroup group_by n
 #' @importFrom ggplot2 aes scale_x_continuous labs
 #' @importFrom stats setNames
@@ -105,7 +110,8 @@ pkcg01 <- function(
   scale = c("LIN", "LOG", "SBS")[1],
   studyid = "STUDYID",
   trt_var = "TRT01A",
-  plotly = TRUE
+  plotly = TRUE,
+  .lazy = FALSE
 ) {
   xmin <- as.numeric(xmin)
   xmax <- as.numeric(xmax)
@@ -233,7 +239,7 @@ pkcg01 <- function(
   plot <- add_filtered_x_scale(plot, plot_data[[xbreaks_var]], xbreaks_mindist)
 
   # Create the list of plots for each unique group
-  plots <- lapply(unique(adnca_grouped[["id_plot"]]), function(id_val) {
+  plots <- .map_tlg_plots(unique(adnca_grouped[["id_plot"]]), function(id_val) {
     plot_data <- adnca_grouped %>% dplyr::filter(id_plot == id_val)
 
     title <- generate_title(plot_data, title, scale, studyid)
@@ -289,7 +295,7 @@ pkcg01 <- function(
           caption = footnote
         )
     }
-  })
+  }, defer = .lazy)
   # `id_plot` is created on `adnca_grouped`, not on `adnca` -- naming from the latter
   # returned NULL, which silently stripped the names and left the export numbering the
   # files 1..n instead of using the group (#1344).
@@ -433,29 +439,32 @@ generate_subtitle <- function(plot_data, subtitle, trt_var, plotgroup_vars, plot
 }
 #' Wrapper around aNCA::pkcg02() function. Calls the function with `LIN` scale argument.
 #' @param data Data to be passed into the plotting function.
+#' @param .lazy Internal app flag: defer group plots until requested.
 #' @param ...  Any other parameters to be passed into the plotting function.
-#' @returns ggplot2 object for pkcg02.
+#' @returns A list of plots, or deferred callable entries when `.lazy = TRUE`.
 #' @export
-g_pkcg02_lin <- function(data, ...) {
-  pkcg02(adnca = data, scale = "LIN", ...)
+g_pkcg02_lin <- function(data, ..., .lazy = FALSE) {
+  pkcg02(adnca = data, scale = "LIN", ..., .lazy = .lazy)
 }
 
 #' Wrapper around aNCA::pkcg02() function. Calls the function with `LOG` scale argument.
 #' @param data Data to be passed into the plotting function.
+#' @param .lazy Internal app flag: defer group plots until requested.
 #' @param ...  Any other parameters to be passed into the plotting function.
-#' @returns ggplot2 object for pkcg02.
+#' @returns A list of plots, or deferred callable entries when `.lazy = TRUE`.
 #' @export
-g_pkcg02_log <- function(data, ...) {
-  pkcg02(adnca = data, scale = "LOG", ...)
+g_pkcg02_log <- function(data, ..., .lazy = FALSE) {
+  pkcg02(adnca = data, scale = "LOG", ..., .lazy = .lazy)
 }
 
 #' Wrapper around aNCA::pkcg02() function. Calls the function with `SBS` scale argument.
 #' @param data Data to be passed into the plotting function.
+#' @param .lazy Internal app flag: defer group plots until requested.
 #' @param ...  Any other parameters to be passed into the plotting function.
-#' @returns ggplot2 object for pkcg02.
+#' @returns A list of plots, or deferred callable entries when `.lazy = TRUE`.
 #' @export
-g_pkcg02_sbs <- function(data, ...) {
-  pkcg02(adnca = data, scale = "SBS", ...)
+g_pkcg02_sbs <- function(data, ..., .lazy = FALSE) {
+  pkcg02(adnca = data, scale = "SBS", ..., .lazy = .lazy)
 }
 
 #' Generate Combined PK Concentration-Time Profile Plot by Cohort
@@ -489,7 +498,9 @@ g_pkcg02_sbs <- function(data, ...) {
 #' @param studyid         A character string specifying the study ID variable.
 #' @param trt_var         A character string specifying the treatment variable.
 #' @param plotly          Logical indicating whether to return plotly objects. Defaults to TRUE.
-#' @returns A list of ggplot or plotly objects for each unique group.
+#' @param .lazy Internal app flag: return deferred group entries for pagination.
+#' @returns A list of ggplot or plotly objects for each unique group. With the
+#'   internal `.lazy` flag, returns named callable entries instead.
 #' @importFrom dplyr mutate across rowwise ungroup group_by n
 #' @importFrom ggplot2 aes scale_x_continuous labs
 #' @importFrom stats setNames
@@ -538,7 +549,8 @@ pkcg02 <- function(
   scale = c("LIN", "LOG", "SBS")[1],
   studyid = "STUDYID",
   trt_var = "TRT01A",
-  plotly = TRUE
+  plotly = TRUE,
+  .lazy = FALSE
 ) {
 
   xmin <- as.numeric(xmin)
@@ -665,7 +677,7 @@ pkcg02 <- function(
   plot <- add_filtered_x_scale(plot, plot_data[[xbreaks_var]], xbreaks_mindist)
 
   # Create the list of plots for each unique group
-  plots <- lapply(unique(adnca_grouped[["id_plot"]]), function(id_val) {
+  plots <- .map_tlg_plots(unique(adnca_grouped[["id_plot"]]), function(id_val) {
     plot_data <- adnca_grouped %>% dplyr::filter(id_plot == id_val)
 
     title <- generate_title(plot_data, title, scale, studyid)
@@ -720,7 +732,7 @@ pkcg02 <- function(
           caption = footnote
         )
     }
-  })
+  }, defer = .lazy)
   # See the note in g_pkcg01(): the names come from `adnca_grouped`, which is where
   # `id_plot` is created (#1344).
   plots %>%

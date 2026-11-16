@@ -24,3 +24,6 @@ inst/shiny/tests/testthat/_snaps
 ^tests/testthat/Rplots\.pdf$
 ^inst/extras/validation_reports/
 ^inst/shiny/log($|/)
+
+^BRANCH_REVIEW\.md$
+^PR_DESCRIPTION\.md$

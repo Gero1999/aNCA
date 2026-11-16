@@ -240,6 +240,75 @@ tlg_module_ui <- function(id, type, options) {
   )
 }
 
+
+#' Evaluate eager or deferred TLG rendering with consistent notifications.
+#' @param render Zero-argument rendering function.
+#' @param notify Notification function from the current module.
+#' @param log Error logging function from the current module.
+#' @returns Rendered entries or a diagnostic message.
+#' @noRd
+.tlg_render_result <- function(render, notify = showNotification, log = log_error) {
+  rendered <- tryCatch({
+    # Data arrives label-restored from the tab_tlg boundary (see
+    # tlg_data_sources) and unfiltered: summary tables and mean plots drop
+    # summary-excluded rows themselves (filter_summary_excluded), while
+    # individual/combined plots and listings keep every record (#1438).
+    # Label restoration matters because the PKNCA/dplyr pipeline strips
+    # column `label` attributes, which breaks the `!COLUMN` label-reference
+    # syntax in title/subtitle/footnote/axis inputs (resolved via
+    # parse_annotation).
+    # Surface user-facing warnings (class `tlg_warning`, raised via .tlg_warn) as
+    # notifications: a dropped stratification variable or a skipped filter otherwise
+    # changes the output silently. Other warnings — ggplot2's "Removed N rows", say —
+    # are left to the console so the notifications stay meaningful.
+    tlg_warnings <- character()
+    result <- withCallingHandlers(
+      render(),
+      tlg_warning = function(w) {
+        tlg_warnings <<- c(tlg_warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    if (length(tlg_warnings) > 0) {
+      notify(
+        paste(unique(tlg_warnings), collapse = "\n"),
+        type = "warning",
+        duration = 12
+      )
+    }
+    # An empty result would render as a blank panel with no explanation. The usual causes
+    # are a filter that matched no rows, or the NCA run not having produced the parameters
+    # this output needs (e.g. RCAMINT/FREXINT for the urine plots), so say so instead.
+    if (length(result) == 0) {
+      paste0(
+        "No output was produced for this TLG. This usually means the sidebar filters ",
+        "matched no rows, or the NCA run did not compute the parameters this output ",
+        "requires."
+      )
+    } else {
+      result
+    }
+  },
+  error = function(e) {
+    # `req()` and `validate()` signal "not ready yet" with conditions that inherit from
+    # `error`. Rendering those turned Shiny's normal gating into what looked like a crash
+    # — a bare `Error:`, or "ADPP data is not available...", shown in the panel before NCA
+    # had run. Hand the condition back so it can be re-raised below; re-raising here would
+    # simply be caught by this same handler.
+    if (inherits(e, "shiny.silent.error")) return(e)
+    if (inherits(e, "tlg_not_applicable")) {
+      return(paste0("Not applicable: ", conditionMessage(e)))
+    }
+    # The call can contain an entire dataset when invoked through do.call().
+    # Log the actionable message without dumping subject records to the console.
+    log("Error in list rendering: ", conditionMessage(e))
+    paste0("Error: ", conditionMessage(e))
+  })
+
+  if (inherits(rendered, "condition")) stop(rendered)
+  rendered
+}
+
 #' Function generating a server function for a TLG module.
 #' @param id          id of the module, preferably with randomly generated part to avoid conflicts
 #' @param data        adnca data object used for processing the TLG
@@ -251,7 +320,7 @@ tlg_module_ui <- function(id, type, options) {
 #'   subject column); used to resolve the `.pknca_groups` default of select options
 #' @param refresh_trigger Reactive invalidated when the parent rebuilds the module UI.
 #' @param label_settings Reactive named list of raw text labels restored from settings.
-#' @returns A list of reactives: rendered `items` and editable raw text `labels`.
+#' @returns Export callable `items` and reactive editable raw text `labels`.
 #'
 tlg_module_server <- function(id, data, type, render_list, options = NULL, # nolint: cyclocomp_linter
                               grouping_vars = reactive(character()),
@@ -259,6 +328,9 @@ tlg_module_server <- function(id, data, type, render_list, options = NULL, # nol
                               label_settings = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     current_page <- reactiveVal(1)
+    render_result <- function(render) {
+      .tlg_render_result(render, notify = showNotification, log = log_error)
+    }
 
     #' updating current page based on user input
     observeEvent(input$next_page, current_page(current_page() + 1))
@@ -315,65 +387,12 @@ tlg_module_server <- function(id, data, type, render_list, options = NULL, # nol
       # A cleared numeric widget arrives as NULL and is already handled above.
       list_options <- purrr::keep(list_options, function(value) all(!value %in% c("", NA)))
 
-      rendered <- tryCatch({
-        # Data arrives label-restored from the tab_tlg boundary (see
-        # tlg_data_sources) and unfiltered: summary tables and mean plots drop
-        # summary-excluded rows themselves (filter_summary_excluded), while
-        # individual/combined plots and listings keep every record (#1438).
-        # Label restoration matters because the PKNCA/dplyr pipeline strips
-        # column `label` attributes, which breaks the `!COLUMN` label-reference
-        # syntax in title/subtitle/footnote/axis inputs (resolved via
-        # parse_annotation).
-        # Surface user-facing warnings (class `tlg_warning`, raised via .tlg_warn) as
-        # notifications: a dropped stratification variable or a skipped filter otherwise
-        # changes the output silently. Other warnings — ggplot2's "Removed N rows", say —
-        # are left to the console so the notifications stay meaningful.
-        tlg_warnings <- character()
-        result <- withCallingHandlers(
-          do.call(render_list, purrr::list_modify(list(data = data()), !!!list_options)),
-          tlg_warning = function(w) {
-            tlg_warnings <<- c(tlg_warnings, conditionMessage(w))
-            invokeRestart("muffleWarning")
-          }
-        )
-        if (length(tlg_warnings) > 0) {
-          showNotification(
-            paste(unique(tlg_warnings), collapse = "\n"),
-            type = "warning",
-            duration = 12
-          )
-        }
-        # An empty result would render as a blank panel with no explanation. The usual causes
-        # are a filter that matched no rows, or the NCA run not having produced the parameters
-        # this output needs (e.g. RCAMINT/FREXINT for the urine plots), so say so instead.
-        if (length(result) == 0) {
-          paste0(
-            "No output was produced for this TLG. This usually means the sidebar filters ",
-            "matched no rows, or the NCA run did not compute the parameters this output ",
-            "requires."
-          )
-        } else {
-          result
-        }
-      },
-      error = function(e) {
-        # `req()` and `validate()` signal "not ready yet" with conditions that inherit from
-        # `error`. Rendering those turned Shiny's normal gating into what looked like a crash
-        # — a bare `Error:`, or "ADPP data is not available...", shown in the panel before NCA
-        # had run. Hand the condition back so it can be re-raised below; re-raising here would
-        # simply be caught by this same handler.
-        if (inherits(e, "shiny.silent.error")) return(e)
-        if (inherits(e, "tlg_not_applicable")) {
-          return(paste0("Not applicable: ", conditionMessage(e)))
-        }
-        # The call can contain an entire dataset when invoked through do.call().
-        # Log the actionable message without dumping subject records to the console.
-        log_error("Error in list rendering: ", conditionMessage(e))
-        paste0("Error: ", conditionMessage(e))
+      render_result(function() {
+        args <- purrr::list_modify(list(data = data()), !!!list_options)
+        # Only renderers explicitly supporting deferred entries receive this flag.
+        if (".lazy" %in% names(formals(render_list))) args$.lazy <- TRUE
+        do.call(render_list, args)
       })
-
-      if (inherits(rendered, "condition")) stop(rendered)
-      rendered
     }) %>%
       debounce(750)
 
@@ -390,7 +409,10 @@ tlg_module_server <- function(id, data, type, render_list, options = NULL, # nol
       page_start <- page_end - entries_per_page() + 1
       if (page_end > num_plots) page_end <- num_plots
 
-      tlg_list()[page_start:page_end]
+      page_start <- min(page_start, num_plots)
+      render_result(function() {
+        aNCA:::.realize_tlg_items(tlg_list()[seq.int(page_start, page_end)])
+      })
     })
 
     if (type == "graph") {
@@ -471,11 +493,13 @@ tlg_module_server <- function(id, data, type, render_list, options = NULL, # nol
       setNames(lapply(text_ids, function(id) options_values[[id]]()), text_ids)
     })
 
-    # Hand the rendered outputs back to the caller so they can be exported (#1344).
-    # `tlg_list()` is the whole set for this TLG -- every page, with the user's current
-    # sidebar options already applied -- which is exactly what the download should write.
-    # Regenerating from the catalog at download time would silently ignore those edits.
-    list(items = tlg_list, labels = text_labels)
+    # Exports explicitly realize every group, including pages never visited. Use a
+    # callable rather than a reactive cache so a download does not retain an entire
+    # study's widgets beyond the bounded page cache.
+    export_items <- function() {
+      render_result(function() aNCA:::.realize_tlg_items(tlg_list()))
+    }
+    list(items = export_items, labels = text_labels)
   })
 }
 

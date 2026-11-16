@@ -1,3 +1,9 @@
+# aNCA (development version)
+
+## Improvements
+
+* Individual and combined concentration TLGs render the current page on demand while retaining complete exports.
+
 # aNCA 0.2.0
 
 ## Data & settings

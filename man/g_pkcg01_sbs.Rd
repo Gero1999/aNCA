@@ -4,15 +4,17 @@
 \alias{g_pkcg01_sbs}
 \title{Wrapper around aNCA::pkcg01() function. Calls the function with \code{SBS} scale argument.}
 \usage{
-g_pkcg01_sbs(data, ...)
+g_pkcg01_sbs(data, ..., .lazy = FALSE)
 }
 \arguments{
 \item{data}{Data to be passed into the plotting function.}
 
 \item{...}{Any other parameters to be passed into the plotting function.}
+
+\item{.lazy}{Internal app flag: defer group plots until requested.}
 }
 \value{
-ggplot2 object for pkcg01.
+A list of plots, or deferred callable entries when \code{.lazy = TRUE}.
 }
 \description{
 Wrapper around aNCA::pkcg01() function. Calls the function with \code{SBS} scale argument.

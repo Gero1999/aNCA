@@ -1,104 +1,67 @@
-# Prepare aNCA 0.2.0 for CRAN review and fix session/calculation recovery
+# Render concentration TLG pages on demand without truncating exports
 
-## Summary
+## How to test
 
-Prepare the 0.2.0 release candidate and address startup, session restoration,
-excretion, and PKNCA compatibility issues found during CRAN preparation.
-The branch also expands regression coverage and records release validation and
-remaining submission work.
+1. Start the app with the bundled example data. In Data, keep the default mapping,
+   filter PCSPEC to SERUM and PARAM to DrugA, submit the filters, then open Preview.
+   No custom dataset is needed.
+2. Open **TLG → Order details → Submit Order Details**, then **Graphs → pkcg01 -
+   Individual Linear**. Set **Entries per page = 2** and move Next → Previous.
+   The eight subject groups must keep their order; revisiting the page should be
+   immediate. Repeat with Individual Log / Side-by-Side and Combined Linear.
+3. Open the graph options and change the title or grouping. The current page
+   must refresh; navigating back must not show the old title or old grouping.
+4. Choose **Export as ZIP**, select the concentration TLG graphs, and export
+   HTML/PDF/PNG as available. Every selected group must be included, including
+   pages never opened. Titles, points, and colors must agree with the app.
 
-This summary covers the net changes in `chore/cran-review-fixes` at `aea6b583`
-relative to `main` at `1a1c99bd` (41 files). Features already present on `main`
-are not additional changes introduced by this branch.
+## Description
 
-## Changes
+Addresses review finding **17**. Individual and combined concentration plots
+(`pkcg01`, `pkcg02`, and their six linear/log/side-by-side catalog wrappers)
+prepare their group list without constructing every Plotly widget. The module
+resolves only the visible page and reuses a bounded cache of up to twenty group
+widgets per data/options generation. Changing data, labels, or options replaces
+that generation, so outdated widgets are not reused.
 
-### Release packaging and documentation
+Normal programmatic calls remain eager. The additive internal `.lazy` flag is
+used by the app only for functions explicitly declaring support. Group order,
+plot templates, labels, and color inputs are still derived from the complete
+input. Summary plots (`pkcg03`) and unrelated TLG types retain their current
+rendering behavior.
 
-- Set the package version to **0.2.0** and publish the existing development NEWS
-  under that release, updating entries for the fixes below.
-- Include NEWS in source packages; exclude Sass cache metadata, local ZIPs,
-  generated test plots, application logs, the release checklist, and historical
-  validation reports. Vignettes remain excluded.
-- Add a release checklist and update CRAN comments with reproduction commands,
-  validation evidence, dependency compatibility findings, and submission tasks.
-- Clarify that Roche's historical validation applies to version 0.1.0.9004,
-  rather than the current release; correct internal documentation references.
+Export uses an explicit all-group callable with the same active options. It
+materializes every deferred group only when requested and does not keep an
+unbounded full-study reactive cache after download. Deferred rendering retains
+notification/error handling rather than letting a failed plot close the session.
 
-### Startup, logging, and exported scripts
+## Validation
 
-- Store application logs in a writable temporary directory by default, with an
-  `aNCA_LOG_DIR` override. Rotate only matching aNCA log files, retain at most
-  five, and preserve unrelated files and directories.
-- Restore the caller's `shiny.maxRequestSize` option when `run_app()` exits,
-  including when startup fails.
-- Stop generated scripts with explicit installation instructions when aNCA is
-  missing, instead of automatically installing packages.
+- Focused deferred-plot and TLG module regression suite: **238 expectations
+  passed**, no failures, warnings, or skips. Covers construction counts, page
+  reuse, cache eviction, data/title invalidation, eager/lazy plot equivalence,
+  error recovery, and complete exports.
+- Local 1,440-row / twenty-subject probe: eager twenty plots **18.866 s**;
+  deferred group plan plus first five plots **2.362 s**; repeated cached page
+  below the timer's resolution. Shared-machine load affects these timings;
+  they are not a universal end-to-end speedup claim.
+- Installed-package production-module smoke passed: two real Plotly entries on
+  each of the first two pages, then all eight ordered groups in explicit export.
+- Documentation regenerated with roxygen2 7.3.3; package lint found no issues.
+- Package check with `--no-tests` passed installation, namespace loading,
+  examples, code analysis, and documentation: **0 errors, 0 warnings, 1 NOTE**
+  (environment could not verify current time).
+- Complete development suite: **4,370 passing expectations, 0 failures,
+  0 warnings, 3 skips** (opt-in browser test, installed-only namespace test,
+  and the existing full-session export integration placeholder).
+- Full browser interaction and multi-format exported files were not manually
+  exercised. Quarto's shared CLI also reports a missing Deno executable after
+  check; this branch does not change or validate slide rendering.
 
-### Session restoration and excretion analysis
+## Scope and review notes
 
-- Reset readiness on every settings restore so repeated restores complete and
-  dismiss the loading dialog.
-- Automatically select urine matrices regardless of capitalization or surrounding
-  whitespace.
-- Validate matrix, parameter, and interval selections; the end-time column;
-  sample collection times; and body-weight values and mass units before
-  calculating. Warn when no matching intervals remain.
-- Catch excretion calculation errors, show actionable notifications, and keep
-  the session available for corrected inputs and resubmission.
-- Use explicit units-package calls for body-weight adjustment and remove unused
-  `DOSNOA`/`VOLUME` interval metadata while retaining actual sample volumes.
-
-### PKNCA compatibility and slope recovery
-
-- Register excretion extensions when the namespace loads, supporting
-  namespace-only use and sessions with only base R attached without replacing
-  native upstream definitions.
-- Export and document the callback aliases `anca_calc_ertlst`,
-  `anca_calc_ertmax`, `anca_calc_volpk`, and `anca_calc_fe` to support older
-  PKNCA callback lookup.
-- Remove incidental `VOLUME` interval metadata from normal NCA updates unless
-  explicitly retained or used for concentration grouping. Preserve sample
-  volumes and compatibility with stricter development PKNCA validation.
-- Catch slope-generation errors, clear failed plots and stale slope results,
-  and allow calculation to recover after data or settings are corrected.
-
-### Tests and reproducibility
-
-- Require testthat >= 3.2.0 and guard individual tests that need optional
-  packages rather than disabling the suite.
-- Replace the unconditionally skipped browser runner with an opt-in installed-app
-  smoke test (`ANCA_RUN_BROWSER_TESTS=true`) covering connection, upload controls,
-  and absence of Shiny output errors.
-- Exercise lazy-loaded SDTM example datasets in installed packages; add regression
-  tests for logging, option cleanup, generated scripts, namespace loading,
-  repeated restores, excretion validation/recovery, and interval/slope handling.
-- Explicitly assert the expected TLG warning and accept only the two specific
-  empty-data warnings introduced by development PKNCA.
-- Add manual reproduction guides for restoration, excretion, and interval
-  metadata, plus an invalid body-weight-unit CSV fixture.
-
-## Validation recorded on the source branch
-
-These results come from `cran-comments.md` and `cran-release-checklist.md`;
-they were not rerun while writing this description.
-
-- Debian 13 / R 4.5.3 / CRAN PKNCA 0.12.1: recorded package check with
-  **0 errors, 0 warnings, and 1 NOTE** about unavailable time verification.
-- Recorded packaged suite: **4,262 passing expectations**, no failures or
-  warnings, and two explicit skips. Additional focused checks cover namespace
-  registration, excretion, and interval compatibility.
-- Recorded lint and roxygen checks passed; installed-app startup and namespace
-  use were checked with the app directory read-only. Compatibility checks also
-  exercised development PKNCA 0.12.1.9003.
-
-## Remaining review before submission
-
-- Run final platform and R-devel checks, remote CRAN incoming/URL checks on a
-  permitted network, and scientific acceptance testing; refresh release evidence.
-- Review the final version, NEWS, maintainer details, and submission comments.
-- The excretion manual guide references `excretion-valid.csv`, but that fixture
-  is absent from the final branch; restore it or update the guide before relying
-  on that paired-data procedure.
-
-This branch prepares a release candidate; it does not submit or tag a release.
+No custom testing data were added: the bundled study supplies eight subjects.
+The cache retains at most twenty widgets, plus currently referenced outputs;
+requesting All or a complete export necessarily constructs the full requested
+set temporarily. Other TLG families can adopt the deferred protocol separately.
+Version is incremented to `0.2.0.9001`, and NEWS records the user-visible change.

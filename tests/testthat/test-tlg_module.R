@@ -1097,3 +1097,61 @@ describe("tlg_module_server: concise diagnostics", {
     expect_false(any(grepl("SUBJECT_RECORD_MUST_NOT_BE_LOGGED", console, fixed = TRUE)))
   })
 })
+
+
+describe("lazy TLG pagination", {
+  it("renders pages on demand, invalidates on data or labels, and exports every group", {
+    calls <- character()
+    source_data <- shiny::reactiveVal(data.frame(id = 1:6, revision = 1))
+    render_groups <- function(data, title = "A", .lazy = FALSE) {
+      aNCA:::.map_tlg_plots(data$id, function(id) {
+        value <- paste(data$revision[[1]], id, title, sep = ":")
+        calls <<- c(calls, value)
+        value
+      }, defer = .lazy)
+    }
+    shiny::testServer(tlg_module_server, args = list(
+      data = source_data, type = "graph", render_list = render_groups,
+      options = list(title = list(type = "text", default = "A"))
+    ), {
+      session$setInputs(entries_per_page = 2)
+      session$elapse(800)
+      expect_equal(current_page_items(), list("1:1:A", "1:2:A"))
+      expect_length(calls, 2)
+      session$setInputs(next_page = 1)
+      session$flushReact()
+      expect_equal(current_page_items(), list("1:3:A", "1:4:A"))
+      expect_length(calls, 4)
+      session$setInputs(previous_page = 1)
+      session$flushReact()
+      expect_equal(current_page_items(), list("1:1:A", "1:2:A"))
+      expect_length(calls, 4)
+      exported <- session$getReturned()$items()
+      expect_equal(exported, as.list(paste(1, 1:6, "A", sep = ":")))
+      expect_length(calls, 6)
+      source_data(data.frame(id = 1:6, revision = 2))
+      session$flushReact()
+      session$elapse(800)
+      expect_equal(current_page_items(), list("2:1:A", "2:2:A"))
+      session$setInputs(`title-text` = "B")
+      session$elapse(800)
+      expect_equal(current_page_items(), list("2:1:B", "2:2:B"))
+      expect_equal(session$getReturned()$items(), as.list(paste(2, 1:6, "B", sep = ":")))
+    })
+  })
+
+  it("reports deferred errors without terminating the module", {
+    render_groups <- function(data, .lazy = FALSE) {
+      aNCA:::.map_tlg_plots(1, function(id) stop("bad deferred plot"), defer = .lazy)
+    }
+    shiny::testServer(tlg_module_server, args = list(
+      data = shiny::reactive(data.frame(x = 1)), type = "graph",
+      render_list = render_groups, options = list()
+    ), {
+      session$setInputs(entries_per_page = 1)
+      session$elapse(800)
+      expect_match(current_page_items(), "Error: bad deferred plot", fixed = TRUE)
+      expect_match(session$getReturned()$items(), "Error: bad deferred plot", fixed = TRUE)
+    })
+  })
+})

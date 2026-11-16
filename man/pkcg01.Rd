@@ -29,7 +29,8 @@ pkcg01(
   scale = c("LIN", "LOG", "SBS")[1],
   studyid = "STUDYID",
   trt_var = "TRT01A",
-  plotly = TRUE
+  plotly = TRUE,
+  .lazy = FALSE
 )
 }
 \arguments{
@@ -80,9 +81,12 @@ pkcg01(
 \item{trt_var}{A character string specifying the treatment variable.}
 
 \item{plotly}{Logical indicating whether to return plotly objects. Defaults to TRUE.}
+
+\item{.lazy}{Internal app flag: return deferred group entries for pagination.}
 }
 \value{
-A list of ggplot or plotly objects for each unique group.
+A list of ggplot or plotly objects for each unique group. With the
+internal \code{.lazy} flag, returns named callable entries instead.
 }
 \description{
 This function generates a list of ggplots for PK concentration-time profiles.
