@@ -21,6 +21,7 @@ local({
     c("functions", "tlg_add_picker.R"),
     c("functions", "zip-utils.R"),
     c("functions", "utils-tlg.R"),
+    c("functions", "utils-table_edits.R"),
     c("functions", "tlg_export.R"),
     c("modules", "tab_tlg", "tlg_module.R"),
     # All four option types: tlg_module_server() resolves the per-option server by name

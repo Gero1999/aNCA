@@ -17,15 +17,15 @@ Use the bundled example; no external dataset is needed. Start with
    Repeat a restore after typing into a rule's Reason cell; the old typed value
    must not overwrite the imported rule.
 4. **Excretion retry:** Include URINE in NCA Setup and run NCA once to enable
-   NCA exports. Open Additional Analysis → Excretion. Uncheck body-weight adjustment; select URINE, AEFRLT, RCAMINT,
-   and Samples; Submit. A result table and excretion export must be available.
+   NCA exports. Open Additional Analysis → Excretion. Uncheck body-weight
+   adjustment; select URINE, AEFRLT, RCAMINT, and Samples; Submit. A result table
+   and excretion export must be available.
 5. Change the end-time column to AFRLT and Submit. A warning must appear;
    the old table and excretion entry in Export as ZIP must disappear. Restore
    AEFRLT and Submit: current results return without reconnecting.
 6. Change the NCA specimen/profile selection or restore another session after a
    successful excretion run. Until Excretion is submitted again, previous
    excretion results must not be displayed or offered for ZIP/slide export.
-
 7. **TLG Reset:** Open TLG, add `pkcl01 – Concentration Listing (first dose)`,
    submit, and open Variables formatting. Change the USUBJID label, confirm,
    Reset to defaults, reopen, and confirm without editing. The default
@@ -37,8 +37,8 @@ Use the bundled example; no external dataset is needed. Start with
 ## Description
 
 Addresses branch-review findings **06, 08, 14, and 15** together because restored
-manual rules and editable-table observer lifecycles share state. Repeated session restores
-previously ignored imported slope rules once any rules existed, and failed or
+manual rules and editable-table observer lifecycles share state. Repeated session
+restores previously ignored imported slope rules once any rules existed, and failed or
 outdated excretion calculations could leave successful older results available
 for export.
 
@@ -59,15 +59,23 @@ for export.
 
 ## Validation
 
-- Pinned roxygen2 7.3.3 documentation generation passed.
-- Focused production-module tests: 78 passing expectations, no failures/warnings/skips.
-- Lint for changed source/test files passed.
-- Source-app Chromium startup smoke: upload UI, live Shiny connection, no output errors.
-- Intermediate broad/check runs were stopped before completion because the related
-  table-editor fixes will be integrated and the combined branch checked again.
+- Documentation generation passed with pinned roxygen2 7.3.3.
+- Combined focused production-module tests: **134 passing expectations**, no
+  failures, warnings, or skips, including restore after a typed cell edit.
+- Chromium source-app startup smoke passed: upload UI, live connection, no output
+  errors. A production-module browser harness also passed Reset/Cancel, ten typed
+  slope edits, and subsequent restores of different, empty, and original rules.
+- Package check passed: **0 errors, 0 warnings, 0 notes** (`cran = FALSE`,
+  `--no-tests --no-build-vignettes --no-manual`); tests are run separately.
+- Final full development suite: **4,401 passing expectations**, no failures or
+  warnings; three skips (opt-in browser smoke, installed-only namespace regression,
+  and full-session export integration test).
+- Final `lintr::lint_package()`: **0 findings**.
 
-The browser steps above are reviewer instructions, not a claim that every
-interactive step was executed automatically.
+The browser steps above are reviewer instructions; the automated browser coverage
+uses a production-module harness, not the complete saved-YAML replay in steps 1–3.
+Full presentation rendering was not checked: the existing Quarto CLI installation
+reports a missing Deno helper.
 
 ## Notes to reviewer
 
