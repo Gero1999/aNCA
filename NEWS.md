@@ -1,3 +1,9 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Partial-AUC ratios select numerator and denominator intervals independently and retain both ranges in their calculation description.
+
 # aNCA 0.2.0
 
 ## Data & settings

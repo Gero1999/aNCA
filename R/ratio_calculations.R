@@ -105,6 +105,18 @@ calculate_ratios.data.frame <- function(
   test_groups = NULL,
   adjusting_factor = 1,
   custom_pptestcd = NULL) {
+  .calculate_ratios_data(
+    data, test_parameter, ref_parameter, match_cols, ref_groups,
+    test_groups, adjusting_factor, custom_pptestcd
+  )
+}
+
+# Calculate independently selected numerator and denominator rows.
+.calculate_ratios_data <- function(
+  data, test_parameter, ref_parameter, match_cols, ref_groups,
+  test_groups = NULL, adjusting_factor = 1, custom_pptestcd = NULL,
+  reference_data = data
+) {
   if (!any(data$PPTESTCD == test_parameter)) {
     warning(
       paste0(
@@ -114,7 +126,7 @@ calculate_ratios.data.frame <- function(
       )
     )
   }
-  if (!any(data$PPTESTCD == ref_parameter)) {
+  if (!any(reference_data$PPTESTCD == ref_parameter)) {
     warning(
       paste0(
         "No ref_parameter with PPTESTCD: '",
@@ -131,7 +143,7 @@ calculate_ratios.data.frame <- function(
   group_cols <- setdiff(colnames(data), extra_res_cols)
 
   # Define the reference and test data based on the parameters and groups
-  df_ref <- as.data.frame(data)[data$PPTESTCD == ref_parameter, , drop = FALSE]
+  df_ref <- as.data.frame(reference_data)[reference_data$PPTESTCD == ref_parameter, , drop = FALSE]
   df_ref <- merge(df_ref, ref_groups)
 
   df_test <- as.data.frame(data)[data$PPTESTCD == test_parameter, , drop = FALSE]
@@ -363,13 +375,11 @@ calculate_ratio_app <- function(
   test_parsed <- parse_interval_parameter(test_parameter)
   ref_parsed <- parse_interval_parameter(ref_parameter)
 
-  # Pre-filter result data for interval parameters by their specific start/end
-  result_data <- res$result
-  if (test_parsed$is_interval || ref_parsed$is_interval) {
-    result_data <- .filter_interval_results(
-      result_data, test_parsed, ref_parsed
-    )
-  }
+  # Select each role independently even when the base parameter is identical.
+  test_data <- .select_ratio_parameter(res$result, test_parsed)
+  ref_data <- .select_ratio_parameter(res$result, ref_parsed)
+  test_label <- test_parameter
+  ref_label <- ref_parameter
 
   # Use base PPTESTCD for matching against the result data
   test_parameter <- test_parsed$base
@@ -384,8 +394,9 @@ calculate_ratio_app <- function(
   ref_groups <- parsed_groups$ref_groups
 
   ratio_list <- lapply(seq_along(match_cols), function(ix) {
-    calculate_ratios(
-      data = result_data,
+    .calculate_ratios_data(
+      data = test_data,
+      reference_data = ref_data,
       test_parameter = test_parameter,
       ref_parameter = ref_parameter,
       match_cols = match_cols[[ix]],
@@ -400,6 +411,13 @@ calculate_ratio_app <- function(
 
   if (nrow(all_ratios) == 0) {
     return(all_ratios)
+  }
+
+  if (test_parsed$is_interval || ref_parsed$is_interval) {
+    all_ratios$PPANMETH <- sub(
+      paste0(test_parameter, " TO ", ref_parameter),
+      paste0(test_label, " TO ", ref_label), all_ratios$PPANMETH, fixed = TRUE
+    )
   }
 
   # For if-needed: individual results (first in ratio_list) are preferred over
@@ -468,54 +486,14 @@ calculate_ratio_app <- function(
   list(test_groups = test_groups, ref_groups = ref_groups)
 }
 
-#' Filter result data to keep only the specific interval rows for interval parameters.
-#'
-#' For non-interval parameters, all rows are kept. For interval parameters,
-#' only rows matching the base PPTESTCD and the specific start/end are retained.
-#' Uses `start_dose`/`end_dose` (dose-relative times) when available, since
-#' `int_parameters` defines intervals relative to dose time. Falls back to
-#' absolute `start`/`end` when dose-relative columns are absent.
-#'
-#' @param result_data Data.frame of PKNCA results.
-#' @param test_parsed Parsed test parameter (from parse_interval_parameter).
-#' @param ref_parsed Parsed ref parameter (from parse_interval_parameter).
-#' @returns Filtered data.frame.
-#' @noRd
-.filter_interval_results <- function(result_data, test_parsed, ref_parsed) {
-  # Use dose-relative times when available (int_parameters defines relative offsets)
-  has_dose_cols <- all(c("start_dose", "end_dose") %in% names(result_data))
-  start_col <- if (has_dose_cols) result_data$start_dose else result_data$start
-  end_col <- if (has_dose_cols) result_data$end_dose else result_data$end
-
-  # Build a logical vector of rows to remove: rows that share a base PPTESTCD
-
-  # with an interval parameter but don't match any of the requested ranges.
-  # When test and ref share the same base (e.g. AUCINT_0-2 vs AUCINT_2-4),
-  # both ranges must be kept.
-  rows_to_remove <- rep(FALSE, nrow(result_data))
-
-  if (test_parsed$is_interval) {
-    is_test_base <- result_data$PPTESTCD == test_parsed$base
-    matches_test <- start_col == test_parsed$start & end_col == test_parsed$end
-
-    if (ref_parsed$is_interval && ref_parsed$base == test_parsed$base) {
-      # Same base PPTESTCD: keep rows matching either range
-      matches_ref <- start_col == ref_parsed$start & end_col == ref_parsed$end
-      rows_to_remove <- rows_to_remove | (is_test_base & !matches_test & !matches_ref)
-    } else {
-      rows_to_remove <- rows_to_remove | (is_test_base & !matches_test)
-    }
+# Select one parameter role using dose-relative boundaries when available.
+.select_ratio_parameter <- function(result_data, parsed) {
+  keep <- result_data$PPTESTCD == parsed$base
+  if (parsed$is_interval) {
+    has_dose_cols <- all(c("start_dose", "end_dose") %in% names(result_data))
+    start <- if (has_dose_cols) result_data$start_dose else result_data$start
+    end <- if (has_dose_cols) result_data$end_dose else result_data$end
+    keep <- keep & start == parsed$start & end == parsed$end
   }
-
-  if (ref_parsed$is_interval) {
-    is_ref_base <- result_data$PPTESTCD == ref_parsed$base
-    matches_ref <- start_col == ref_parsed$start & end_col == ref_parsed$end
-
-    # Skip if already handled above (same base as test)
-    if (!(test_parsed$is_interval && test_parsed$base == ref_parsed$base)) {
-      rows_to_remove <- rows_to_remove | (is_ref_base & !matches_ref)
-    }
-  }
-
-  result_data[!rows_to_remove, , drop = FALSE]
+  result_data[!is.na(keep) & keep, , drop = FALSE]
 }

@@ -745,3 +745,64 @@ describe("calculate_ratio_app with interval parameters", {
     expect_equal(sort(r2$PPORRES), sort(r1$PPORRES) * 100, tolerance = 1e-6)
   })
 })
+
+describe("interval ratio role selection", {
+  res <- FIXTURE_PKNCA_RES
+  res$result <- data.frame(
+    USUBJID = "S1", PARAM = rep(c("A", "B"), each = 2), PCSPEC = "SERUM",
+    ATPTREF = 1, start = c(0, 2, 0, 2), end = c(2, 4, 2, 4),
+    start_dose = c(0, 2, 0, 2), end_dose = c(2, 4, 2, 4),
+    PPTESTCD = "AUCINT", PPORRES = c(2, 10, 4, 40), PPSTRES = c(2, 10, 4, 40),
+    PPORRESU = "ng*hr/mL", PPSTRESU = "ng*hr/mL", type_interval = "manual",
+    exclude = NA_character_
+  )
+
+  calculate <- function(x = res, aggregate = "no", test = "AUCINT_0-2", ref = "AUCINT_2-4") {
+    calculate_ratio_app(x, test, ref, test_group = "PARAM: B", ref_group = "PARAM: A",
+                        aggregate_subject = aggregate)
+  }
+
+  it("uses only the selected range for each side and records its provenance", {
+    result <- calculate()
+    expect_equal(nrow(result), 1)
+    expect_equal(result$PPORRES, 0.4)
+    expect_equal(result$PPSTRES, 0.4)
+    expect_match(result$PPANMETH, "AUCINT_0-2 TO AUCINT_2-4", fixed = TRUE)
+    same <- calculate(ref = "AUCINT_0-2")
+    expect_equal(same$PPORRES, 2)
+  })
+
+  it("matches each dose separately and uses dose-relative interval identities", {
+    second <- res$result
+    second$ATPTREF <- 2
+    second$start <- second$start + 24
+    second$end <- second$end + 24
+    second$PPORRES[second$PARAM == "B"] <- c(8, 80)
+    second$PPSTRES <- second$PPORRES
+    x <- res
+    x$result <- bind_rows(x$result, second)
+    result <- calculate(x)
+    expect_equal(nrow(result), 2)
+    expect_equal(result$PPORRES[order(result$ATPTREF)], c(0.4, 0.8))
+  })
+
+  it("keeps reference intervals separate when aggregating subjects", {
+    second <- res$result
+    second$USUBJID <- "S2"
+    second$PPORRES <- second$PPORRES * 2
+    second$PPSTRES <- second$PPORRES
+    x <- res
+    x$result <- bind_rows(x$result, second)
+    result <- calculate(x, "yes")
+    expect_equal(nrow(result), 2)
+    expect_equal(result$PPORRES[order(result$USUBJID)], c(4 / 15, 8 / 15))
+    individual <- calculate(x, "if-needed")
+    expect_equal(individual$PPORRES, c(0.4, 0.4))
+  })
+
+  it("falls back to absolute intervals when relative fields are absent", {
+    x <- res
+    x$result <- select(x$result, -start_dose, -end_dose)
+    expect_equal(calculate(x)$PPORRES, 0.4)
+  })
+})
