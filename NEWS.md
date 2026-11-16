@@ -1,3 +1,10 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Repeated session restores now replace or clear manual slope rules instead of retaining a previous session's exclusions.
+* Excretion tables and exports are cleared after a failed calculation or changed input data until a successful resubmission.
+
 # aNCA 0.2.0
 
 ## Data & settings

@@ -172,3 +172,89 @@ describe("excretion calculations", {
     )
   })
 })
+
+describe("excretion result lifecycle", {
+  it("clears display and export after invalid submission and recovers on retry", {
+    original <- excretion_fixture()
+    shiny::testServer(
+      excretion_server,
+      args = list(input_pknca_data = reactive(original)),
+      {
+        session$userData$results <- reactiveValues(additional_analysis = list())
+        session$setInputs(adjust_bw = FALSE, matrix_select = "URINE", end_time_col = "AEFRLT",
+                          param_select = "RCAMINT", interval_types = "sample", submit_btn = 1)
+        expect_gt(nrow(results_output()), 0)
+        expect_identical(session$userData$results$additional_analysis$excretion_results,
+                         results_output())
+
+        session$setInputs(end_time_col = "AFRLT", submit_btn = 2)
+        expect_null(analysis_result())
+        expect_null(results_output())
+        expect_null(session$userData$results$additional_analysis$excretion_results)
+        session$setInputs(end_time_col = "AEFRLT", submit_btn = 3)
+        expect_gt(nrow(results_output()), 0)
+        expect_identical(session$userData$results$additional_analysis$excretion_results,
+                         results_output())
+        expect_false(session$isClosed())
+      }
+    )
+  })
+
+  it("invalidates changed or removed datasets until they are explicitly recalculated", {
+    original <- excretion_fixture()
+    data <- reactiveVal(original)
+    shiny::testServer(
+      excretion_server,
+      args = list(input_pknca_data = reactive({
+        req(data())
+        data()
+      })),
+      {
+        session$userData$results <- reactiveValues(additional_analysis = list())
+        session$setInputs(adjust_bw = FALSE, matrix_select = "URINE", end_time_col = "AEFRLT",
+                          param_select = "RCAMINT", interval_types = "sample", submit_btn = 1)
+        previous <- analysis_result()$result$PPORRES
+        doubled <- original
+        doubled$conc$data$AVAL <- doubled$conc$data$AVAL * 2
+        data(doubled)
+        session$flushReact()
+        expect_null(analysis_result())
+        expect_null(results_output())
+        expect_null(session$userData$results$additional_analysis$excretion_results)
+
+        session$setInputs(submit_btn = 2)
+        expect_equal(analysis_result()$result$PPORRES, previous * 2)
+        expect_gt(nrow(results_output()), 0)
+        data(NULL)
+        session$flushReact()
+        expect_null(session$userData$results$additional_analysis$excretion_results)
+        expect_null(analysis_result())
+        expect_false(session$isClosed())
+      }
+    )
+  })
+
+  it("clears an earlier export when a later PKNCA calculation errors", {
+    run <- PKNCA::pk.nca
+    state <- new.env()
+    state$fail <- FALSE
+    testthat::local_mocked_bindings(pk.nca = function(...) {
+      if (state$fail) stop("simulated PKNCA failure")
+      run(...)
+    }, .package = "PKNCA")
+    shiny::testServer(
+      excretion_server,
+      args = list(input_pknca_data = reactive(excretion_fixture())),
+      {
+        session$userData$results <- reactiveValues(additional_analysis = list())
+        session$setInputs(adjust_bw = FALSE, matrix_select = "URINE", end_time_col = "AEFRLT",
+                          param_select = "RCAMINT", interval_types = "sample", submit_btn = 1)
+        expect_gt(nrow(results_output()), 0)
+        state$fail <- TRUE
+        session$setInputs(submit_btn = 2)
+        expect_null(results_output())
+        expect_null(session$userData$results$additional_analysis$excretion_results)
+      }
+    )
+  })
+})

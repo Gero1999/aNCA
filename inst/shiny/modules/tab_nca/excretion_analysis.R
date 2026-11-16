@@ -158,10 +158,25 @@ excretion_server <- function(id, input_pknca_data) {
                      metadata_type = "parameter")
     })
 
-    # Perform calculations
-    analysis_result <- reactive({
-      req(input_pknca_data())
-      data <- input_pknca_data()
+    # Parent data reactives use req() while a restore is incomplete. Treat that
+    # temporary unavailability as a new generation too, so exports cannot stay stale.
+    available_data <- reactive({
+      tryCatch(input_pknca_data(), shiny.silent.error = function(e) NULL)
+    })
+    data_generation <- reactiveVal(0L)
+    submitted_generation <- reactiveVal(NULL)
+    # Data changes invalidate both the visible result and the export cache immediately.
+    observeEvent(available_data(), {
+      data_generation(data_generation() + 1L)
+      session$userData$results$additional_analysis$excretion_results <- NULL
+    }, ignoreNULL = FALSE, priority = 100)
+
+    # Perform calculations only on Submit; retain which data generation was submitted.
+    submitted_calculation <- reactive({
+      session$userData$results$additional_analysis$excretion_results <- NULL
+      submitted_generation(data_generation())
+      req(available_data())
+      data <- available_data()
 
       input_error <- .excretion_input_error(input, data)
       if (!is.null(input_error)) {
@@ -264,9 +279,14 @@ excretion_server <- function(id, input_pknca_data) {
     }) %>%
       bindEvent(input$submit_btn)
 
+    analysis_result <- reactive({
+      result <- submitted_calculation()
+      if (!identical(submitted_generation(), data_generation())) return(NULL)
+      result
+    })
+
     results_output <- reactive({
-      req(analysis_result())
-      conc_groups <- unname(unlist(input_pknca_data()$conc$columns$groups))
+      if (is.null(analysis_result())) return(NULL)
       #pivot wider
       analysis_result()$result %>%
         mutate(PPSTRESU = ifelse(PPSTRESU %in% c("unitless", "fraction"), "", PPSTRESU)) %>%
@@ -290,7 +310,7 @@ excretion_server <- function(id, input_pknca_data) {
     # Save the results in the output folder
     observeEvent(results_output(), {
       session$userData$results$additional_analysis$excretion_results <- results_output()
-    })
+    }, ignoreNULL = FALSE)
   })
 }
 

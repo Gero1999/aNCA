@@ -27,6 +27,18 @@ manual_slopes_table_ui <- function(id, help_widget = NULL) {
   )
 }
 
+# Validate imported profile keys without letting malformed settings disconnect the session.
+.manual_slopes_match_data <- function(rules, data) {
+  match_cols <- setdiff(names(rules), c("TYPE", "RANGE", "REASON"))
+  valid <- is.data.frame(rules) && length(match_cols) > 0 &&
+    all(match_cols %in% names(data$conc$data))
+  if (!valid) return(FALSE)
+  tryCatch(
+    nrow(semi_join(rules, data$conc$data, by = match_cols)) == nrow(rules),
+    error = function(e) FALSE
+  )
+}
+
 #' Manual Slopes Table Server for Slope Selection
 #'
 #' Server module for managing the manual slopes table (inclusion/exclusion rules).
@@ -55,34 +67,50 @@ manual_slopes_table_server <- function(
     # Stays NULL until the user adds a rule or a settings override is applied.
     manual_slopes <- reactiveVal(NULL)
 
-    # When pknca_data() changes with a settings override, apply it
-    observeEvent(pknca_data(), {
-      req(is.null(manual_slopes()), slopes_pknca_groups())
+    refresh_reactable <- reactiveVal(0)
+    pending_override <- reactiveVal(NULL)
+    warned_override <- FALSE
+    if (is.null(manual_slopes_override)) manual_slopes_override <- reactive(NULL)
 
-      if (!is.null(manual_slopes_override())) {
-        # Integrate slope rules to work with settings upload
-        if (!is.data.frame(manual_slopes_override()) ||
-              nrow(manual_slopes_override()) == 0) return(NULL)
-        log_debug_list("Manual slopes override:", manual_slopes_override())
-        # Identify columns to match (all except TYPE, RANGE, REASON)
-        match_cols <- setdiff(names(manual_slopes_override()), c("TYPE", "RANGE", "REASON"))
+    # An imported value is an explicit restore, independent of ordinary data refreshes.
+    # Keep it pending until matching data are available, and clear the previous rules now.
+    observeEvent(manual_slopes_override(), {
+      pending_override(list(rules = manual_slopes_override()))
+      warned_override <<- FALSE
+      manual_slopes(NULL)
+      refresh_reactable(refresh_reactable() + 1)
+    }, ignoreNULL = FALSE, priority = 100)
 
-        override_valid <- manual_slopes_override() %>%
-          semi_join(pknca_data()$conc$data, by = match_cols) %>%
-          nrow() == nrow(manual_slopes_override())
-
-        if (!override_valid) {
-          msg <- "Manual slopes not compatible with current data, leaving as default."
+    observe({
+      request <- pending_override()
+      req(!is.null(request))
+      rules <- request$rules
+      if (is.null(rules) || (is.data.frame(rules) && nrow(rules) == 0)) {
+        pending_override(NULL)
+        return()
+      }
+      req(pknca_data(), slopes_pknca_groups())
+      valid <- .manual_slopes_match_data(rules, pknca_data())
+      if (!valid) {
+        if (!warned_override) {
+          msg <- paste("Imported manual slopes do not match the current data;",
+                       "previous rules were cleared.")
           log_warn(msg)
           showNotification(msg, type = "warning", duration = 5)
-          return(NULL)
+          warned_override <<- TRUE
         }
-        manual_slopes(manual_slopes_override())
+        return()
       }
+      log_debug_list("Manual slopes override:", rules)
+      pending_override(NULL)
+      manual_slopes(rules)
+      refresh_reactable(refresh_reactable() + 1)
     })
 
-    # create a reactive to update the reactable UI when the table changes
-    refresh_reactable <- reactiveVal(0)
+    # A user edit takes precedence over an unmatched pending import.
+    observeEvent(manual_slopes(), {
+      if (!is.null(pending_override())) pending_override(NULL)
+    }, ignoreInit = TRUE, priority = -10)
 
     # Add a new row to the table when the user clicks the add button
     observeEvent(input$add_rule, {
