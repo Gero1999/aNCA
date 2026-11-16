@@ -98,6 +98,29 @@ describe("parse_annotation", {
   })
 })
 
+describe("annotation literals", {
+  it("never evaluates brace expressions in entered text or substituted values", {
+    old <- options(anca_review_annotation_probe = NULL)
+    on.exit(options(old), add = TRUE)
+    code <- '{options(anca_review_annotation_probe=TRUE); "text"}'
+    expect_equal(as.character(parse_annotation(data.frame(x = 1), code)), code)
+    expect_null(getOption("anca_review_annotation_probe"))
+    expect_equal(as.character(parse_annotation(data.frame(x = code), "$x")), code)
+    expect_null(getOption("anca_review_annotation_probe"))
+    expect_equal(as.character(parse_annotation(data.frame(x = 1), "Group {A} {{B}}")),
+                 "Group {A} {{B}}")
+  })
+
+  it("retains supported token expansion across unique values", {
+    d <- data.frame(PARAM = c("A", "B"), DOSE = c(1, 2))
+    attr(d$PARAM, "label") <- "Analyte"
+    expect_equal(as.character(parse_annotation(d, "!PARAM: $PARAM, $DOSE")),
+                 c("Analyte: A, 1", "Analyte: B, 2"))
+    expect_equal(as.character(parse_annotation(d, "!MISSING {$PARAM}")),
+                 c("ERR {A}", "ERR {B}"))
+  })
+})
+
 describe(".concatenate_list", {
   it("formats a simple named list correctly", {
     l <- list(a = 1, b = 2:3)

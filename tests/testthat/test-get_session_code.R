@@ -1,184 +1,38 @@
-# Tests for clean_deparse function
+# Settings literals must reconstruct the values, not merely look like R code.
 describe("clean_deparse()", {
-  it("formats character single and vector correctly", {
-    expect_equal(clean_deparse("hello"), '"hello"')
-    expect_equal(clean_deparse(c("a", "b")), 'c("a", "b")')
-  })
+  roundtrip <- function(x) eval(parse(text = clean_deparse(x)), envir = baseenv())
 
-  it("formats numeric and integer values correctly", {
-    expect_equal(clean_deparse(1.23), "1.23")
-    expect_equal(clean_deparse(c(1, 2)), "c(1, 2)")
-    expect_equal(clean_deparse(as.integer(3)), "3")
-    expect_equal(clean_deparse(as.integer(c(4L, 5L))), "c(4, 5)")
-  })
-
-  it("formats logical values correctly", {
-    expect_equal(clean_deparse(TRUE), "TRUE")
-    expect_equal(clean_deparse(c(TRUE, FALSE)), "c(TRUE, FALSE)")
-    expect_equal(clean_deparse(logical()), "logical()")
-  })
-
-  it("formats named lists correctly", {
-    l <- list(a = 1, b = "x")
-    exp_named <- "list(\n  a = 1,\n  b = \"x\"\n)"
-    expect_equal(clean_deparse(l), exp_named)
-  })
-
-  it("formats named lists with non-syntactic names correctly", {
-    l <- list("first item" = 1, "second-item" = "x")
-    exp_named <- "list(\n  \"first item\" = 1,\n  \"second-item\" = \"x\"\n)"
-    expect_equal(clean_deparse(l), exp_named)
-  })
-
-  it("renders data.frame as data.frame(...) with per-column vectors", {
-    df <- data.frame(x = c(1, 2), y = c("a", "b"), stringsAsFactors = FALSE)
-    exp_df <- paste0(
-      "data.frame(\n",
-      "  x = c(1, 2),\n",
-      "  y = c(\"a\", \"b\")\n",
-      ")"
+  it("preserves escaped text, typed missing values, and exact numeric values", {
+    values <- list(
+      c('Study "A"', "C:\\temp\\data.csv", "line1\nline2", NA_character_),
+      c(1.2345678901234567, NA_real_, NaN, Inf, -Inf),
+      c(1L, NA_integer_), c(TRUE, FALSE, NA),
+      character(), numeric(), integer(), logical(), list(), NULL
     )
-    expect_equal(clean_deparse(df), exp_df)
+    for (x in values) expect_identical(roundtrip(x), x)
   })
 
-  it("renders tbl_df as data.frame(...)", {
-    df <- dplyr::tibble(x = c(1, 2), y = c("a", "b"))
-    exp_df <- paste0(
-      "data.frame(\n",
-      "  x = c(1, 2),\n",
-      "  y = c(\"a\", \"b\")\n",
-      ")"
+  it("preserves names, classes, and data-frame attributes", {
+    df <- data.frame(
+      `column with spaces` = c('quoted "value"', NA_character_),
+      `back\\slash` = factor(c("A", "B")),
+      date = as.Date(c("2026-01-01", NA)), check.names = FALSE
     )
-    expect_equal(clean_deparse(df), exp_df)
+    rownames(df) <- c("first row", "second row")
+    attr(df[[1]], "label") <- "A label"
+    x <- list(df, `a "quoted" name` = c(key = 1.2345678901234567),
+              `empty table` = df[0, ], `empty frame` = data.frame())
+    expect_identical(roundtrip(x), x)
+    expect_identical(roundtrip(setNames(list(1, 2), c("", "NA"))),
+                     setNames(list(1, 2), c("", "NA")))
   })
 
-  it("renders a NULL object correctly", {
-    expect_equal(clean_deparse(NULL), "NULL")
-  })
-
-  it("renders empty classes correctly", {
-    expect_equal(clean_deparse(list()), "list()")
-    expect_equal(clean_deparse(data.frame()), "data.frame()")
-    expect_equal(clean_deparse(character(0)), "character()")
-    expect_equal(clean_deparse(numeric(0)), "numeric()")
-  })
-
-  it("renders data.frame with long columns using newlines and indentation", {
-    long_vec <- as.character(1:25)
-    df <- data.frame(x = 1:25, y = long_vec, stringsAsFactors = FALSE)
-    out <- clean_deparse(df)
-    expect_match(out, "c\\(\n") # Should use newlines for long columns
-    expect_match(out, "    1, 2, 3") # Indentation present
-    expect_match(out, "x = c\\(") # Column x uses c( ... )
-    expect_match(out, "y = c\\(") # Column y uses c( ... )
-  })
-
-  it("respects max_per_line for character vectors", {
-    v <- as.character(1:6)
-    out <- clean_deparse(v, max_per_line = 2)
-    exp_out <- "c(\n  \"1\", \"2\",\n  \"3\", \"4\",\n  \"5\", \"6\"\n)"
-    expect_equal(out, exp_out)
-  })
-
-  it("respects max_per_line for numeric vectors", {
-    v <- 1:6
-    out <- clean_deparse(v, max_per_line = 2)
-    exp_out <- "c(\n  1, 2,\n  3, 4,\n  5, 6\n)"
-    expect_equal(out, exp_out)
-  })
-
-  it("respects max_per_line for lists of vectors", {
-    l <- list(a = 1:4, b = letters[1:4])
-    out <- clean_deparse(l, max_per_line = 2)
-    exp_out <- paste0(
-      "list(\n",
-      "  a = c(\n",
-      "    1, 2,\n",
-      "    3, 4\n",
-      "  ),\n",
-      "  b = c(\n",
-      '    "a", "b",\n',
-      '    "c", "d"\n',
-      "  )\n",
-      ")"
-    )
-    expect_equal(out, exp_out)
-  })
-
-  it("respects max_per_line for data.frames", {
-    df <- data.frame(x = 1:4, y = letters[1:4], stringsAsFactors = FALSE)
-    out <- clean_deparse(df, max_per_line = 2)
-    exp_out <- paste0(
-      "data.frame(\n",
-      "  x = c(\n",
-      "    1, 2,\n",
-      "    3, 4\n",
-      "  ),\n",
-      "  y = c(\n",
-      '    "a", "b",\n',
-      '    "c", "d"\n',
-      "  )\n",
-      ")"
-    )
-    expect_equal(out, exp_out)
-  })
-
-  it("uses rep(...) when values are repeated at least min_to_rep times", {
-    # Test character
-    char_vec <- c(rep("apple", 5), "banana", "cherry", rep("date", 3))
-    out_char <- clean_deparse.character(char_vec, max_per_line = 3, min_to_rep = 2)
-    exp_out_char <- paste0(
-      "c(\n",
-      "  rep(\"apple\", 5), \"banana\", \"cherry\",\n",
-      "  rep(\"date\", 3)\n",
-      ")"
-    )
-    expect_equal(out_char, exp_out_char)
-
-    # Test numeric
-    vec <- c(rep(5, 10), 6, 7, rep(8, 5))
-    out_vec <- clean_deparse(vec, max_per_line = 3, min_to_rep = 2)
-    exp_out_vec <- paste0(
-      "c(\n",
-      "  rep(5, 10), 6, 7,\n",
-      "  rep(8, 5)\n",
-      ")"
-    )
-    expect_equal(out_vec, exp_out_vec)
-
-    # Test min_to_rep greater than any repetition
-    vec <- c(1, rep(2, 2), rep(3, 3), rep(4, 4))
-
-    out_no_rep <- clean_deparse(vec, max_per_line = 10, min_to_rep = Inf)
-    out_1_to_rep <- clean_deparse(vec, max_per_line = 10, min_to_rep = 1)
-    out_2_to_rep <- clean_deparse(vec, max_per_line = 10, min_to_rep = 2)
-    out_3_to_rep <- clean_deparse(vec, max_per_line = 10, min_to_rep = 3)
-    out_4_to_rep <- clean_deparse(vec, max_per_line = 10, min_to_rep = 4)
-
-    exp_out_no_rep <- "c(1, 2, 2, 3, 3, 3, 4, 4, 4, 4)"
-    exp_out_1_to_rep <- "c(rep(1, 1), rep(2, 2), rep(3, 3), rep(4, 4))"
-    exp_out_2_to_rep <- "c(1, rep(2, 2), rep(3, 3), rep(4, 4))"
-    exp_out_3_to_rep <- "c(1, 2, 2, rep(3, 3), rep(4, 4))"
-    exp_out_4_to_rep <- "c(1, 2, 2, 3, 3, 3, rep(4, 4))"
-
-    expect_equal(out_no_rep, exp_out_no_rep)
-    expect_equal(out_2_to_rep, exp_out_2_to_rep)
-    expect_equal(out_3_to_rep, exp_out_3_to_rep)
-    expect_equal(out_4_to_rep, exp_out_4_to_rep)
-  })
-
-  it("interprets tbl_df as data.frame", {
-    # check for filled object
-    df <- dplyr::tibble(a = 1:3, b = c("x", "y", "z"))
-    out <- clean_deparse(df)
-    exp_out <- clean_deparse(as.data.frame(df))
-    expect_equal(out, exp_out)
-
-    # check for empty object
-    df <- dplyr::tibble()
-    out <- clean_deparse(df)
-    exp_out <- clean_deparse(data.frame())
-    expect_equal(out, exp_out)
+  it("represents tibbles as data frames and preserves long vectors", {
+    df <- dplyr::tibble(x = 1:25, y = as.character(1:25))
+    expect_identical(roundtrip(df), as.data.frame(df))
+    expect_identical(roundtrip(dplyr::tibble()), data.frame())
+    expect_identical(roundtrip(rep(c("a", "b", NA_character_), 20)),
+                     rep(c("a", "b", NA_character_), 20))
   })
 })
 
@@ -290,9 +144,15 @@ describe("get_settings_code: ", {
       # `blq_rule =`), so a single occurrence confirms the fix.
       update_line <- grep("blq_imputation_rule =", file_content, value = TRUE)
       expect_length(update_line, 1)
-      # The rule from the YAML is substituted inline (deparsed as `list(...)`),
-      # not left as the `settings_list$...` placeholder.
-      expect_match(update_line, "blq_imputation_rule = list\\(")
+      code <- as.list(parse(output_file))
+      assignment <- Filter(function(x) {
+        is.call(x) && identical(x[[1]], as.name("<-")) &&
+          identical(x[[2]], as.name("pknca_obj"))
+      }, code)
+      update_call <- assignment[[1]][[3]][[3]]
+      expect_identical(update_call[[1]], as.name("PKNCA_update_data_object"))
+      expect_identical(eval(update_call$blq_imputation_rule, baseenv()),
+                       read_settings(setts_file)$settings$data_imputation$blq_imputation_rule)
     })
 
     it("derives extra_vars_to_keep from YAML mapping", {
@@ -390,5 +250,36 @@ describe("generated script dependency checks", {
       any(vapply(as.list(x), calls_install, logical(1)))
     }
     expect_false(calls_install(code))
+  })
+})
+
+
+describe("generated script literal roundtrips", {
+  it("writes parseable scripts for quoted and Windows dataset paths", {
+    for (path in c('/tmp/study "A".csv', "C:\\temp\\data.csv")) {
+      out <- withr::local_tempfile(fileext = ".R")
+      get_settings_code(test_path("data/test-settings.yaml"), path, out)
+      code <- parse(out)
+      assignment <- Filter(function(x) {
+        is.call(x) && identical(x[[1]], as.name("<-")) &&
+          identical(x[[2]], as.name("data_path"))
+      }, as.list(code))
+      env <- new.env(parent = baseenv())
+      eval(assignment[[1]], env)
+      expect_identical(env$data_path, path)
+    }
+  })
+
+  it("preserves settings values through actual template substitution", {
+    template <- withr::local_tempfile(fileext = ".R")
+    out <- withr::local_tempfile(fileext = ".R")
+    writeLines("x <- settings_list$test", template)
+    values <- list(text = c('A "quote"', NA_character_),
+                   number = 1.2345678901234567,
+                   table = data.frame(`a b` = 1L, check.names = FALSE))
+    get_code(list(test = values), out, template)
+    env <- new.env(parent = baseenv())
+    sys.source(out, env)
+    expect_identical(env$x, values)
   })
 })

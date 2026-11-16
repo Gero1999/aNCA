@@ -11,6 +11,7 @@
 #' @param template (Optional) Path to a Quarto template to use (default: NULL).
 #' @param extra_setup (Optional) Character vector of extra setup lines to include after YAML.
 #' @returns Invisibly returns TRUE if the file was created.
+#' @importFrom yaml as.yaml
 create_qmd_doc <- function(
   quarto_path,
   title = "NCA Report",
@@ -19,27 +20,22 @@ create_qmd_doc <- function(
   template = NULL,
   extra_setup = NULL
 ) {
-  yaml_header <- c(
-    "---",
-    paste0("title: \"", gsub("[\r\n]+", " ", title), "\""),
-    "format:",
-    "  revealjs:",
-    "    toc: true",
-    "    toc-depth: 1",
-    "    theme: default",
-    "    scrollable: true",
-    "    smaller: true",
-    "execute:",
-    "  echo: false",
-    "  warning: false",
-    "  message: false",
-    "---",
-    ""
+  header <- list(
+    title = gsub("[\r\n]+", " ", title),
+    format = list(revealjs = list(
+      toc = TRUE, `toc-depth` = 1L, theme = "default",
+      scrollable = TRUE, smaller = TRUE
+    )),
+    execute = list(echo = FALSE, warning = FALSE, message = FALSE)
   )
+  header_yaml <- as.yaml(header, handlers = list(logical = function(x) {
+    structure(ifelse(x, "true", "false"), class = "verbatim")
+  }))
+  yaml_header <- c("---", strsplit(header_yaml, "\n", fixed = TRUE)[[1]], "---", "")
   load_chunk <- c(
     "```{r setup, include=FALSE}",
-    if (!is.null(rda_path)) paste0("load(\"", rda_path, "\")") else "",
-    paste0("library(", libraries, ")"),
+    if (!is.null(rda_path)) paste0("load(", clean_deparse(rda_path), ")") else "",
+    paste0("library(", vapply(libraries, clean_deparse, character(1)), ")"),
     "```",
     ""
   )

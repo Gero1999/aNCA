@@ -1,3 +1,10 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Plot annotations treat braces literally while retaining column and label references.
+* Exported R scripts preserve quoted paths, missing values, names, and numeric precision; report titles with quotes or backslashes now produce valid presentation headers.
+
 # aNCA 0.2.0
 
 ## Data & settings

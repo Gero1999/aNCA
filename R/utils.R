@@ -73,6 +73,7 @@ rename_interval_params <- function(data) {
 #' * `\n` character is substituted for `<br>` tag in order to add new lines in rendered image.
 #' * `$COLNAME` is parsed to provide unique data value from the mentioned column.
 #' * `!COLNAME` is parsed to provide `label` attribute for a given column name.
+#' * Braces are literal text, not R expressions.
 #' If any values are missing from the provided data, they are substituted for `ERR` string.
 #'
 #' @param data Data frame containing data to reference. Should include columns and labels referenced
@@ -86,7 +87,11 @@ rename_interval_params <- function(data) {
 #'
 #' @export
 parse_annotation <- function(data, text) {
+  # Escape user braces before introducing only the supported column lookups.
+  # Substituted data values are not recursively interpreted by glue.
   text %>%
+    gsub("{", "{{", ., fixed = TRUE) %>%
+    gsub("}", "}}", ., fixed = TRUE) %>%
     gsub("\n", "<br>", .) %>%
     gsub("\\$(\\w+)", "{unique(data[['\\1']])}", .) %>%
     gsub("!(\\w+)", "{attr(data[['\\1']], 'label')}", .) %>%

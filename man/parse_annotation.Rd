@@ -29,6 +29,7 @@ actual data and/or substituted for format that is better parsed via rendering fu
 \item \verb{\\n} character is substituted for \verb{<br>} tag in order to add new lines in rendered image.
 \item \verb{$COLNAME} is parsed to provide unique data value from the mentioned column.
 \item \code{!COLNAME} is parsed to provide \code{label} attribute for a given column name.
+\item Braces are literal text, not R expressions.
 If any values are missing from the provided data, they are substituted for \code{ERR} string.
 }
 }

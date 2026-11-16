@@ -405,3 +405,24 @@ describe("create_qmd_dose_slides", {
     expect_false(grepl("dose_norm_statistics", content, fixed = TRUE))
   })
 })
+
+
+describe("Quarto document literals", {
+  it("serializes titles as valid YAML and setup paths as valid R literals", {
+    titles <- c('Study "A"', "C:\\data: study", "Study Δ", "Line1\nLine2\r\nLine3")
+    for (title in titles) {
+      out <- withr::local_tempfile(fileext = ".qmd")
+      rda <- 'C:\\data\\study "A".rda'
+      create_qmd_doc(out, title = title, rda_path = rda)
+      lines <- readLines(out, warn = FALSE)
+      bounds <- which(lines == "---")
+      header <- yaml::yaml.load(paste(lines[(bounds[1] + 1):(bounds[2] - 1)], collapse = "\n"))
+      expect_identical(header$title, gsub("[\r\n]+", " ", title))
+      expect_identical(header$format$revealjs$theme, "default")
+      expect_false(header$execute$echo)
+      setup <- grep("^load\\(", lines, value = TRUE)
+      call <- parse(text = setup)[[1]]
+      expect_identical(call[[2]], rda)
+    }
+  })
+})
