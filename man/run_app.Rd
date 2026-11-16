@@ -25,6 +25,8 @@ No return value, called for side effects to launch the Shiny application.
 Run the Shiny app
 }
 \details{
+The Shiny application has optional dependencies beyond the core NCA API.
+If any are missing, startup lists the exact packages to install explicitly.
 If a \code{datapath} is provided, the app will attempt to automatically load the
 specified dataset on startup. This is achieved by setting an internal option
 (\code{options(aNCA.datapath = datapath)}), which the app then reads.

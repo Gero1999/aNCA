@@ -1,5 +1,7 @@
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
+  skip_if_not_installed("logger")
   library(logger)
   env <- new.env(parent = environment())
   source(system.file("shiny/modules/tab_data.R", package = "aNCA"), local = env)

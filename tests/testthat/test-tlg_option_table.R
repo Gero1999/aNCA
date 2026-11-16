@@ -3,8 +3,11 @@
 
 # Source required files
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
+  skip_if_not_installed("reactable")
   library(reactable)
+  skip_if_not_installed("reactable.extras")
   library(reactable.extras)
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(

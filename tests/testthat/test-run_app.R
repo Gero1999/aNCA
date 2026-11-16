@@ -52,6 +52,7 @@ describe("run_app input validation", {
 
 
 describe("run_app option cleanup", {
+  for (package in .app_dependencies) skip_if_not_installed(package)
   it("restores the upload limit after successful startup", {
     withr::local_options(shiny.maxRequestSize = 12345)
     testthat::local_mocked_bindings(runApp = function(...) {

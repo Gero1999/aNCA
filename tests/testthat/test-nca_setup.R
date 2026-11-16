@@ -1,5 +1,6 @@
 # Verify standalone and ZIP downloads preserve independent TLG annotations and order metadata.
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   export_env <- new.env(parent = environment())
   shiny_dir <- system.file("shiny", package = "aNCA")

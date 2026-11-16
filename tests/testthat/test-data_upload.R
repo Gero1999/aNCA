@@ -1,3 +1,5 @@
+skip_if_not_installed("shiny")
+
 source(file.path(system.file("shiny", package = "aNCA"), "modules", "tab_data", "data_upload.R"),
        local = TRUE)
 

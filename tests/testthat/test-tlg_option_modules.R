@@ -3,7 +3,9 @@
 
 # Source all required module files
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
+  skip_if_not_installed("shinyWidgets")
   library(shinyWidgets)
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(

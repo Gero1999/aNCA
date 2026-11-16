@@ -1,4 +1,5 @@
 describe("application log files", {
+  skip_if_not_installed("logger")
   logger_env <- new.env(parent = asNamespace("logger"))
   source(system.file("shiny/functions/utils.R", package = "aNCA"), local = logger_env)
   # Capture configuration locally instead of changing the test process's logger.

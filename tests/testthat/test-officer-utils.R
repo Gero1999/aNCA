@@ -1,4 +1,6 @@
 describe("create_pptx_dose_slides", {
+  skip_if_not_installed("officer")
+  skip_if_not_installed("flextable")
   template <- system.file("www/templates/template.pptx", package = "aNCA")
 
   base_slides <- list(
@@ -190,6 +192,8 @@ describe("create_pptx_dose_slides", {
 })
 
 describe(".add_pptx_dose_norm_slide", {
+  skip_if_not_installed("officer")
+  skip_if_not_installed("flextable")
   template <- system.file("www/templates/template.pptx", package = "aNCA")
 
   it("adds plot-only slide when dose_norm_plot selected", {
@@ -267,6 +271,8 @@ describe(".add_pptx_dose_norm_slide", {
 })
 
 describe("add_pptx_sl_plottable", {
+  skip_if_not_installed("officer")
+  skip_if_not_installed("flextable")
   template <- system.file("www/templates/template.pptx", package = "aNCA")
 
   it("adds a slide with plot and table", {
@@ -280,6 +286,8 @@ describe("add_pptx_sl_plottable", {
 })
 
 describe("add_pptx_sl_table", {
+  skip_if_not_installed("officer")
+  skip_if_not_installed("flextable")
   template <- system.file("www/templates/template.pptx", package = "aNCA")
 
   it("adds a slide with a table and title", {
@@ -391,6 +399,8 @@ describe(".build_glossary", {
 })
 
 describe(".add_pptx_glossary_slides", {
+  skip_if_not_installed("officer")
+  skip_if_not_installed("flextable")
   template <- system.file("www/templates/template.pptx", package = "aNCA")
 
   it("adds one slide for a small glossary", {
@@ -433,6 +443,8 @@ describe(".add_pptx_glossary_slides", {
 })
 
 describe("create_pptx_dose_slides glossary integration", {
+  skip_if_not_installed("officer")
+  skip_if_not_installed("flextable")
   template <- system.file("www/templates/template.pptx", package = "aNCA")
 
   it("includes glossary slide in the output", {

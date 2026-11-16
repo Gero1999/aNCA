@@ -6,15 +6,20 @@
 
 # Source the tab_tlg module and its server-side dependencies.
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   library(dplyr)
   library(purrr)
+  skip_if_not_installed("logger")
   library(logger)
+  skip_if_not_installed("reactable")
   library(reactable)
+  skip_if_not_installed("reactable.extras")
   library(reactable.extras)
   # tlg_module_ui() builds a bslib layout_sidebar with a shinyWidgets dropdown; without
   # these the panel builder cannot run and no modules get registered.
   library(bslib)
+  skip_if_not_installed("shinyWidgets")
   library(shinyWidgets)
   shiny_dir <- system.file("shiny", package = "aNCA")
   for (f in list(

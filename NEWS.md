@@ -1,3 +1,9 @@
+# aNCA (development version)
+
+## Changes
+
+* Programmatic NCA use no longer requires the optional Shiny application stack; app startup lists any additional packages to install.
+
 # aNCA 0.2.0
 
 ## Data & settings

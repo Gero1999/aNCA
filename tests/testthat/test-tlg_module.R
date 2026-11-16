@@ -1,8 +1,11 @@
 # Source the TLG module to test pure utility functions
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
+  skip_if_not_installed("shinyWidgets")
   library(shinyWidgets)
   # The module's error handler calls log_error(); the app attaches logger in app.R.
+  skip_if_not_installed("logger")
   library(logger)
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(file.path(shiny_dir, "functions", "utils-tlg.R"), local = TRUE)

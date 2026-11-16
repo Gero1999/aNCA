@@ -1,8 +1,10 @@
 # Test the production calculation reactive; UI helpers are isolated from the mock session.
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   library(purrr)
   library(units)
+  skip_if_not_installed("logger")
   library(logger)
   source(system.file("shiny/modules/tab_nca/excretion_analysis.R", package = "aNCA"),
          local = TRUE)

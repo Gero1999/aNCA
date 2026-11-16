@@ -65,10 +65,14 @@ describe("collection volume interval metadata", {
 })
 
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
+  skip_if_not_installed("logger")
   library(logger)
   library(plotly)
+  skip_if_not_installed("shinyWidgets")
   library(shinyWidgets)
+  skip_if_not_installed("shinyjqui")
   library(shinyjqui)
   env <- new.env(parent = environment())
   shiny_dir <- system.file("shiny", package = "aNCA")

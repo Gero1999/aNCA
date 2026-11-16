@@ -1,5 +1,6 @@
 # Tests for the bulk TLG export helpers (issue #1344).
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(file.path(shiny_dir, "functions", "utils-tlg.R"), local = TRUE)

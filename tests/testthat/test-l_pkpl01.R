@@ -35,6 +35,7 @@ describe("l_pkpl01 (rlistings not installed)", {
 })
 
 describe("l_pkpl01", {
+  skip_if_not_installed("rlistings")
   it("returns a named list", {
     result <- l_pkpl01(pkpl_data)
     expect_type(result, "list")
@@ -85,6 +86,7 @@ describe("l_pkpl01", {
 })
 
 describe("PK listing parameter selection", {
+  skip_if_not_installed("rlistings")
   it("shows only selected parameters and retains subject values and units", {
     result <- l_pkpl01(pkpl_data, param_filter = "Cmax")[[1]]
     expect_equal(rlistings::listing_dispcols(result), c("TRT01A", "USUBJID", "Cmax"))
@@ -135,6 +137,7 @@ describe("PK listing parameter selection", {
 })
 
 describe("l_pkpl01_mp", {
+  skip_if_not_installed("rlistings")
   it("filters to metabolite rows via METABFL (preferred path)", {
     result <- l_pkpl01_mp(pkpl_metab_data)
     # Only Metab-DrugA rows — listing name contains "Metab"
@@ -174,6 +177,7 @@ describe("l_pkpl01_mp", {
 })
 
 describe("l_pkpl04_mp", {
+  skip_if_not_installed("rlistings")
   it("keeps parameters on the same subject row when displaying parameter codes", {
     data <- transform(pkpl_data, PARAMCD = ifelse(PARAM == "Cmax", "CMAX", "AUCLST"))
     named <- l_pkpl04_mp(data)

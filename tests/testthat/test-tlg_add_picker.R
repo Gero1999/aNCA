@@ -1,5 +1,6 @@
 # Tests for the "Add TLGs to order" modal helpers (issue #1335).
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(file.path(shiny_dir, "functions", "tlg_add_picker.R"), local = TRUE)

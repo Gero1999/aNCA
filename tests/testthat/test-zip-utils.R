@@ -493,6 +493,7 @@ describe("save_ggplot_format: html", {
 # .make_zip_filename gained a `suffix` argument so the TLG bulk download can reuse the
 # project/study naming instead of duplicating it (issue #1344).
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   source(
     file.path(system.file("shiny", package = "aNCA"), "modules", "tab_nca", "zip.R"),
@@ -533,6 +534,7 @@ describe(".make_zip_filename", {
 # Rendered TLGs are exported through the app-wide "Export as ZIP" button rather than a
 # second control on the TLG tab (issue #1344).
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   source(
     file.path(system.file("shiny", package = "aNCA"), "modules", "tab_nca", "zip.R"),

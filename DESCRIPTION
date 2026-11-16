@@ -1,6 +1,6 @@
 Package: aNCA
 Title: (Pre-)Clinical NCA in a Dynamic Shiny App
-Version: 0.2.0
+Version: 0.2.0.9001
 Authors@R: c(
     person("Ercan", "Suekuer", email = "ercan.suekuer@roche.com", role = "aut",
            comment = c(ORCID = "0009-0001-1626-1526")),
@@ -26,62 +26,62 @@ Description: An interactive 'shiny' application for performing non-compartmental
   Noncompartmental Analysis: The PKNCA R Package" <doi:10.1007/s10928-015-9432-2>.
 License: Apache License (>= 2)
 Imports: 
-    bslib,
     dplyr,
     formatters,
     ggplot2,
     glue,
     grid,
-    htmltools,
-    htmlwidgets,
-    logger,
     magrittr,
     PKNCA (>= 0.12.1),
     plotly (>= 4.11.0),
     purrr,
-    reactable,
-    reactable.extras,
     rlang,
-    shiny,
-    shinycssloaders,
-    shinyjs,
-    shinyjqui,
-    shinyWidgets,
     stats,
     tidyr,
     tools,
     units,
     writexl,
-    yaml,
-    zip
+    yaml
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Suggests:
     arrow,
+    bslib,
     covr,
     DT,
     flextable,
     ggh4x,
     haven,
+    htmltools,
+    htmlwidgets,
     jsonlite,
     knitr,
     lintr (>= 3.2.0),
+    logger,
     markdown,
     mockery,
     officer,
     pak,
+    quarto,
+    reactable,
+    reactable.extras,
     readxl,
     rlistings,
     rmarkdown,
     sass,
     scales,
+    shiny,
+    shinycssloaders,
+    shinyjqui,
+    shinyjs,
     shinytest2,
+    shinyWidgets,
     testthat (>= 3.2.0),
     usethis,
-    quarto,
     vdiffr,
-    withr
+    withr,
+    zip
 Config/testthat/edition: 3
 Language: en-US
 URL: https://pharmaverse.github.io/aNCA/, https://github.com/pharmaverse/aNCA

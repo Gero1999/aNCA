@@ -74,7 +74,20 @@ devtools::load_all()
 
 ## Quick start
 
-To run the application, simply invoke:
+The programmatic NCA API installs without the optional Shiny application stack.
+Before launching the app, install its additional packages once:
+
+```R
+install.packages(c(
+  "bslib", "htmltools", "htmlwidgets", "logger", "reactable", "reactable.extras",
+  "shiny", "shinycssloaders", "shinyjs", "shinyjqui", "shinyWidgets", "zip"
+))
+```
+
+Contributor installs using `devtools::install_deps(dependencies = TRUE)` already
+include these packages. `run_app()` names any remaining missing app packages.
+
+To run the application, invoke:
 
 ```R
 aNCA::run_app()

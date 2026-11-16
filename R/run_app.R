@@ -9,6 +9,8 @@
 #'
 #' @returns No return value, called for side effects to launch the Shiny application.
 #' @details
+#' The Shiny application has optional dependencies beyond the core NCA API.
+#' If any are missing, startup lists the exact packages to install explicitly.
 #' If a `datapath` is provided, the app will attempt to automatically load the
 #' specified dataset on startup. This is achieved by setting an internal option
 #' (`options(aNCA.datapath = datapath)`), which the app then reads.
@@ -89,16 +91,13 @@ run_app <- function(datapath = NULL, settings = NULL,
 
 #' Check if all dependencies required to run shiny application are installed.
 #'
-#' Reads the Imports field from DESCRIPTION and verifies each package is
-#' available. This keeps the check in sync with DESCRIPTION automatically.
+#' Checks the explicit optional application requirements. Core Imports are already
+#' required for loading aNCA and need not be tested again here.
 #' @noRd
-check_app_dependencies <- function() {
-  desc <- read.dcf(system.file("DESCRIPTION", package = "aNCA"), fields = "Imports")
-  deps <- trimws(unlist(strsplit(desc[1, "Imports"], ",")))
-  deps <- gsub("\\s*\\(.*\\)", "", deps) # strip version constraints
-  deps <- deps[nzchar(deps)]
+check_app_dependencies <- function(package_available = requireNamespace) {
+  deps <- .app_dependencies
 
-  missing_packages <- deps[!vapply(deps, requireNamespace, logical(1), quietly = TRUE)]
+  missing_packages <- deps[!vapply(deps, package_available, logical(1), quietly = TRUE)]
 
   if (length(missing_packages) > 0) {
     stop(
@@ -109,3 +108,9 @@ check_app_dependencies <- function() {
     )
   }
 }
+
+# These are optional for the programmatic NCA API but required by inst/shiny/app.R.
+.app_dependencies <- c(
+  "bslib", "htmltools", "htmlwidgets", "logger", "reactable", "reactable.extras",
+  "shiny", "shinycssloaders", "shinyjs", "shinyjqui", "shinyWidgets", "zip"
+)

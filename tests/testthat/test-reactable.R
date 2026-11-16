@@ -1,5 +1,6 @@
 # Source the common reactable module to test the pure define_cols() helper.
 local({
+  skip_if_not_installed("shiny")
   library(shiny)
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(
