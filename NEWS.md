@@ -1,3 +1,9 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Descriptive statistics and TLG tables now use the same log-variance geometric CV definition; previously reported descriptive geometric CVs may need recalculation.
+
 # aNCA 0.2.0
 
 ## Data & settings

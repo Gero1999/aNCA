@@ -235,7 +235,6 @@ filter_metabolite_rows <- function(data, caller = "filter_metabolite_rows", allo
 #' @noRd
 .summarise_adpp <- function(vals, include_geo = TRUE) { # nolint: cyclocomp_linter
   vals <- vals[!is.na(vals)]
-  pos  <- vals[vals > 0]
   n    <- length(vals)
   mn   <- if (n > 0) mean(vals) else NA_real_
   s    <- if (n > 1) sd(vals)   else NA_real_
@@ -248,11 +247,10 @@ filter_metabolite_rows <- function(data, caller = "filter_metabolite_rows", allo
     stringsAsFactors = FALSE
   )
   if (include_geo) {
-    gm  <- if (length(pos) > 0) exp(mean(log(pos))) else NA_real_
-    gs  <- if (length(pos) > 1) sd(log(pos))        else NA_real_
+    geo <- .geometric_statistics(vals)
     out <- cbind(out, data.frame(
-      GeoMean   = round(gm, 3),
-      GeoCV_pct = if (!is.na(gs)) round(sqrt(exp(gs^2) - 1) * 100, 1) else NA_real_,
+      GeoMean   = round(geo[["mean"]], 3),
+      GeoCV_pct = round(geo[["cv"]], 1),
       stringsAsFactors = FALSE
     ))
   }

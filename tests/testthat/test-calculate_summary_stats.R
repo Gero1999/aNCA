@@ -94,7 +94,7 @@ describe("calculate_summary_stats", {
         "Geomean", "Geocv", "Mean", "SD", "Min",
         "Max", "Median", "Count.missing", "Count.total"
       ),
-      `A[mg/L]` = c(1.817, 55.032, 2, 1, 1, 3, 2, 0, 3)
+      `A[mg/L]` = c(1.817, 60.13, 2, 1, 1, 3, 2, 0, 3)
     )
 
     # Check that the result matches the expected output
@@ -149,7 +149,7 @@ describe("calculate_summary_stats", {
         "Geomean", "Geocv", "Mean", "SD", "Min",
         "Max", "Median", "Count.missing", "Count.total"
       ),
-      `A[µg/L]` = c(1414.214, 50.00, 1500.00, 707.107, 1000.00, 2000.00, 1500.00, 1.00, 3.00)
+      `A[µg/L]` = c(1414.214, 52.109, 1500.00, 707.107, 1000.00, 2000.00, 1500.00, 1.00, 3.00)
     )
 
     expect_equal(result, expected_result)
@@ -199,5 +199,44 @@ describe(".mode_unit", {
 
   it("ignores NAs and returns the mode of non-NA values", {
     expect_equal(.mode_unit(c("mg/L", NA, "mg/L", NA)), "mg/L")
+  })
+})
+
+describe("shared geometric statistics", {
+  summarize <- function(x) {
+    d <- data.frame(ATPTREF = 1, PPTESTCD = "CMAX", PPORRES = x, PPSTRES = x,
+                    PPORRESU = "ng/mL", PPSTRESU = "ng/mL")
+    calculate_summary_stats(d)
+  }
+
+  it("uses log variance and agrees with TLG statistics at display precision", {
+    x <- c(1, 2, 4)
+    expected <- 100 * sqrt(exp(var(log(x))) - 1)
+    result <- summarize(x)
+    cv <- result[["CMAX[ng/mL]"]][result$Statistic == "Geocv"]
+    gm <- result[["CMAX[ng/mL]"]][result$Statistic == "Geomean"]
+    expect_equal(cv, round(expected, 3))
+    expect_equal(gm, 2)
+    tlg <- .summarise_adpp(x)
+    expect_equal(tlg$GeoCV_pct, round(expected, 1))
+    expect_equal(tlg$GeoMean, gm)
+  })
+
+  it("uses finite positive observations and defines empty/singleton behavior", {
+    expect_equal(.geometric_statistics(c(0, -1, NA, Inf, 1, 2, 4)),
+                 .geometric_statistics(c(1, 2, 4)))
+    expect_true(all(is.na(.geometric_statistics(c(0, -1, NA, Inf)))))
+    single <- .geometric_statistics(c(4, NA, 0))
+    expect_equal(single[["mean"]], 4)
+    expect_true(is.na(single[["cv"]]))
+    expect_equal(.summarise_adpp(c(1, 2, 4, Inf))$GeoCV_pct,
+                 .summarise_adpp(c(1, 2, 4))$GeoCV_pct)
+  })
+
+  it("uses the same scientific result for the app testing data", {
+    d <- read.csv(testthat::test_path("..", "manual", "data", "geometric-cv.csv"))
+    cmax <- aggregate(AVAL ~ USUBJID, d, max)$AVAL
+    expect_equal(cmax, c(1, 2, 4))
+    expect_equal(summarize(cmax)[["CMAX[ng/mL]"]][2], 78.537)
   })
 })

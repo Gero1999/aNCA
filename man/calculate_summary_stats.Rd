@@ -25,7 +25,8 @@ This function calculates various summary statistics for formatted output of PKNC
 The function calculates the following statistics for numeric variables:
 \itemize{
 \item Geometric mean (\code{geomean})
-\item Geometric coefficient of variation (\code{geocv})
+\item Geometric coefficient of variation (\code{geocv}), calculated as
+\code{100 * sqrt(exp(var(log(x))) - 1)} using finite positive observations
 \item Arithmetic mean (\code{mean})
 \item Standard deviation (\code{sd})
 \item Minimum value (\code{min})
@@ -34,6 +35,8 @@ The function calculates the following statistics for numeric variables:
 \item Count of missing values (\code{count.missing})
 \item Count (\code{count})
 }
+Geometric statistics exclude nonpositive and nonfinite observations. The geometric
+mean is NA without eligible observations; geometric CV is NA with fewer than two.
 The resulting summary statistics are rounded to three decimal places.
 If units are different, they are standardized to the group's most frequent first unit.
 }

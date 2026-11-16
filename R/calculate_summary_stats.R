@@ -1,3 +1,12 @@
+# Shared unrounded geometric statistics for finite, positive observations.
+.geometric_statistics <- function(values) {
+  positive <- values[is.finite(values) & values > 0]
+  c(
+    mean = if (length(positive)) exp(mean(log(positive))) else NA_real_,
+    cv = if (length(positive) > 1L) sqrt(expm1(sd(log(positive))^2)) * 100 else NA_real_
+  )
+}
+
 #' Get the most frequent non-NA unit from a character vector
 #'
 #' Returns `NA_character_` when all values are `NA` or the vector is empty,
@@ -27,7 +36,8 @@
 #' @details The function calculates the following statistics for numeric variables:
 #' \itemize{
 #'   \item Geometric mean (`geomean`)
-#'   \item Geometric coefficient of variation (`geocv`)
+#'   \item Geometric coefficient of variation (`geocv`), calculated as
+#'     `100 * sqrt(exp(var(log(x))) - 1)` using finite positive observations
 #'   \item Arithmetic mean (`mean`)
 #'   \item Standard deviation (`sd`)
 #'   \item Minimum value (`min`)
@@ -36,6 +46,8 @@
 #'   \item Count of missing values (`count.missing`)
 #'   \item Count (`count`)
 #' }
+#' Geometric statistics exclude nonpositive and nonfinite observations. The geometric
+#' mean is NA without eligible observations; geometric CV is NA with fewer than two.
 #' The resulting summary statistics are rounded to three decimal places.
 #' If units are different, they are standardized to the group's most frequent first unit.
 #'
@@ -88,8 +100,7 @@ calculate_summary_stats <- function(data, input_groups = "ATPTREF") {
         is.na(ModeUnit) | ModeUnit == "",
         PPTESTCD,
         paste0(PPTESTCD, "[", ModeUnit, "]")
-      ),
-      PPSTRES_log = log(ifelse(PPSTRES > 0, PPSTRES, NA_real_)),
+      )
     ) %>%
 
     # Group by the input groups and the parameter test codes
@@ -97,8 +108,8 @@ calculate_summary_stats <- function(data, input_groups = "ATPTREF") {
 
     # Calculate summary statistics
     summarise(
-      Geomean = exp(mean(PPSTRES_log, na.rm = TRUE)),
-      Geocv = (sd(PPSTRES, na.rm = TRUE) / exp(mean(PPSTRES_log, na.rm = TRUE))) * 100,
+      Geomean = .geometric_statistics(PPSTRES)[["mean"]],
+      Geocv = .geometric_statistics(PPSTRES)[["cv"]],
       Mean = mean(PPSTRES, na.rm = TRUE),
       SD = sd(PPSTRES, na.rm = TRUE),
       Min = ifelse(all(is.na(PPSTRES)), NA, min(PPSTRES, na.rm = TRUE)),

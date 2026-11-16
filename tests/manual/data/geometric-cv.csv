@@ -1,0 +1,16 @@
+"STUDYID","USUBJID","PCSPEC","PARAM","METABFL","AFRLT","NFRLT","ARRLT","NRRLT","RRLTU","AVAL","AVALU","DOSETRT","DOSEA","DOSEU","ROUTE","ADOSEDUR","ATPTREF","TRTRINT"
+"GEOCV","S1","SERUM","DrugA","",0,0,0,0,"hr",0.25,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S1","SERUM","DrugA","",1,1,1,1,"hr",1,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S1","SERUM","DrugA","",2,2,2,2,"hr",0.5,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S1","SERUM","DrugA","",4,4,4,4,"hr",0.25,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S1","SERUM","DrugA","",8,8,8,8,"hr",0.125,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S2","SERUM","DrugA","",0,0,0,0,"hr",0.5,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S2","SERUM","DrugA","",1,1,1,1,"hr",2,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S2","SERUM","DrugA","",2,2,2,2,"hr",1,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S2","SERUM","DrugA","",4,4,4,4,"hr",0.5,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S2","SERUM","DrugA","",8,8,8,8,"hr",0.25,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S3","SERUM","DrugA","",0,0,0,0,"hr",1,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S3","SERUM","DrugA","",1,1,1,1,"hr",4,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S3","SERUM","DrugA","",2,2,2,2,"hr",2,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S3","SERUM","DrugA","",4,4,4,4,"hr",1,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
+"GEOCV","S3","SERUM","DrugA","",8,8,8,8,"hr",0.5,"ng/mL","DrugA",5,"mg","ORAL",0,"DOSE1",24
