@@ -35,6 +35,7 @@ MAPPING_DESIRED_ORDER <- c( # nolint: object_name_linter
 #'
 #' @details
 #' - Validates that all required columns are mapped and no duplicates exist.
+#' - Converts mapped numeric measurement fields after preserving raw identifier text.
 #' - If `ADOSEDUR` is not mapped, it is assigned a value of `0`.
 #' - Removes concentration data duplicates using all columns except `ARRLT`, `NRRLT`,
 #'  and `ATPTREF`.
@@ -94,6 +95,7 @@ apply_mapping <- function(
   for (col in names(mappings_not_in_data)) {
     new_dataset[[col]] <- mappings_not_in_data[[col]]
   }
+  mapped_columns <- names(mapping)
   mapping <- mapping[unname(mapping) %in% names(dataset)]
 
   # Apply the changes to the data
@@ -102,6 +104,8 @@ apply_mapping <- function(
     mutate(!!!lapply(mapping, function(col) dataset[[col]])) %>%
     # Order the renamed variables based on desired_order
     select(any_of(desired_order), everything()) %>%
+    # Raw CSV inference preserves text when numeric inference would lose information.
+    .coerce_mapped_measurements(columns = mapped_columns) %>%
     # Apply the default ADNCA labels
     apply_labels()
 
@@ -115,6 +119,23 @@ apply_mapping <- function(
   }
 
   new_dataset
+}
+
+# Coerce known numeric analysis columns only after their mapping roles are known.
+.coerce_mapped_measurements <- function(data, columns) {
+  numeric_vars <- metadata_nca_variables$Variable[
+    metadata_nca_variables$Type %in% c("float", "integer", "Num")
+  ]
+  for (name in intersect(unique(numeric_vars), columns)) {
+    value <- data[[name]]
+    if (!is.character(value) && !is.factor(value)) next
+    numeric_value <- suppressWarnings(as.numeric(as.character(value)))
+    if (any(!is.na(value) & is.na(numeric_value))) {
+      stop("Mapped numeric column '", name, "' contains non-numeric values.", call. = FALSE)
+    }
+    data[[name]] <- numeric_value
+  }
+  data
 }
 
 #' Internal helper to check for missing required columns to map

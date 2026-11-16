@@ -1,104 +1,37 @@
-# Prepare aNCA 0.2.0 for CRAN review and fix session/calculation recovery
+# Preserve CSV identifiers and restore filters safely
+
+## How to test
+
+1. Start this branch's app (`devtools::load_all(export_all = FALSE); aNCA::run_app()`).
+2. Upload [csv-identifiers.csv](tests/manual/data/csv-identifiers.csv). In **Mapping**, map **USUBJID → participant**; retain the matching-name mappings for other fields. Continue to **Filtering**. Both `001` and `1` must remain distinct; the unfiltered dataset has **50 rows**.
+3. Add an **AFRLT / min-max / -2-2** filter and submit: **34 rows** remain. Change its value to **-3--1**: **18 rows** remain. Enter `bad`: an explicit validation message appears, and the session stays connected; a corrected range works again.
+4. Save settings with a valid filter. Remove the filter, submit, and save settings without filters. Restore the filtered, unfiltered, and filtered settings in the same session. The row counts must match each restore, without a stuck modal or disconnection.
+5. Supplemental API check for multi-value exclusion: `aNCA::apply_filters(data.frame(x = c(1,2,3,1,2,3)), list(list(column = "x", condition = "!=", value = c("1","2"))))` must return only the two `3` rows. Numeric-range exponent notation such as `1e-3-2e-3` is covered by automated tests.
+
+The CSV fixture is needed to exercise lexical subject IDs through upload. Other tests create small synthetic data inline; no additional study data are included.
 
 ## Summary
 
-Prepare the 0.2.0 release candidate and address startup, session restoration,
-excretion, and PKNCA compatibility issues found during CRAN preparation.
-The branch also expands regression coverage and records release validation and
-remaining submission work.
+Addresses review findings **01, 07, and 12**, which meet at the input/mapping/filtering boundary.
 
-This summary covers the net changes in `chore/cran-review-fixes` at `aea6b583`
-relative to `main` at `1a1c99bd` (41 files). Features already present on `main`
-are not additional changes introduced by this branch.
+- CSV inference now retains text if numeric/logical inference would change its representation, including leading zeros, long identifiers, and custom source columns.
+- Mapping converts known numeric measurement fields only after their roles are assigned, and rejects invalid numeric measurements instead of manufacturing missing observations.
+- Filter removal destroys obsolete input observers. Restore uses monotonically increasing IDs and discards cleared modules before invoking their reactives; empty restores clear the saved applied-filter state too.
+- `!=` excludes the complete selected set. Numeric ranges support signs, decimals, and exponents. Invalid conditions or ranges fail explicitly instead of silently returning unfiltered data, and app validation remains recoverable.
 
-## Changes
+## Validation
 
-### Release packaging and documentation
+- `devtools::document()` with roxygen2 **7.3.3** completed.
+- Full `devtools::test(stop_on_failure = TRUE)`: **4,370 passed**, **0 failures**, **0 warnings**, **3 explicit skips** (installed-only namespace test, opt-in browser runner, full-session slide integration).
+- Targeted reader/mapping/filter/restore tests: **203 passed**; the final CSV/RDS parity test run passed **114 reader expectations**.
+- `lintr::lint_package()`: **0 findings**; final reader-file lint also passed.
+- Final `devtools::check(document = FALSE, cran = FALSE, manual = FALSE, args = c("--no-tests", "--no-manual"))`: **0 errors, 0 warnings, 0 notes**. Tests were run separately above; this is not a remote CRAN incoming check.
+- Installed-app Chromium smoke verified upload/mapping (**50 rows**, IDs `001` and `1`), signed range (**34 rows**), an invalid-range notification without disconnection, correction (**18 rows**), and removal (**50 rows**).
 
-- Set the package version to **0.2.0** and publish the existing development NEWS
-  under that release, updating entries for the fixes below.
-- Include NEWS in source packages; exclude Sass cache metadata, local ZIPs,
-  generated test plots, application logs, the release checklist, and historical
-  validation reports. Vignettes remain excluded.
-- Add a release checklist and update CRAN comments with reproduction commands,
-  validation evidence, dependency compatibility findings, and submission tasks.
-- Clarify that Roche's historical validation applies to version 0.1.0.9004,
-  rather than the current release; correct internal documentation references.
+Browser YAML replay remains a reviewer step above; repeated imported-filter state is covered by production-module `testServer()` regressions.
 
-### Startup, logging, and exported scripts
+## Notes for reviewers
 
-- Store application logs in a writable temporary directory by default, with an
-  `aNCA_LOG_DIR` override. Rotate only matching aNCA log files, retain at most
-  five, and preserve unrelated files and directories.
-- Restore the caller's `shiny.maxRequestSize` option when `run_app()` exits,
-  including when startup fails.
-- Stop generated scripts with explicit installation instructions when aNCA is
-  missing, instead of automatically installing packages.
+The existing `(NA)` sentinel policy is preserved: selecting the sentinel includes missing rows in the retained result. Invalid filter inputs now error through the public API instead of warning and returning the original data; the app presents that error without terminating the session.
 
-### Session restoration and excretion analysis
-
-- Reset readiness on every settings restore so repeated restores complete and
-  dismiss the loading dialog.
-- Automatically select urine matrices regardless of capitalization or surrounding
-  whitespace.
-- Validate matrix, parameter, and interval selections; the end-time column;
-  sample collection times; and body-weight values and mass units before
-  calculating. Warn when no matching intervals remain.
-- Catch excretion calculation errors, show actionable notifications, and keep
-  the session available for corrected inputs and resubmission.
-- Use explicit units-package calls for body-weight adjustment and remove unused
-  `DOSNOA`/`VOLUME` interval metadata while retaining actual sample volumes.
-
-### PKNCA compatibility and slope recovery
-
-- Register excretion extensions when the namespace loads, supporting
-  namespace-only use and sessions with only base R attached without replacing
-  native upstream definitions.
-- Export and document the callback aliases `anca_calc_ertlst`,
-  `anca_calc_ertmax`, `anca_calc_volpk`, and `anca_calc_fe` to support older
-  PKNCA callback lookup.
-- Remove incidental `VOLUME` interval metadata from normal NCA updates unless
-  explicitly retained or used for concentration grouping. Preserve sample
-  volumes and compatibility with stricter development PKNCA validation.
-- Catch slope-generation errors, clear failed plots and stale slope results,
-  and allow calculation to recover after data or settings are corrected.
-
-### Tests and reproducibility
-
-- Require testthat >= 3.2.0 and guard individual tests that need optional
-  packages rather than disabling the suite.
-- Replace the unconditionally skipped browser runner with an opt-in installed-app
-  smoke test (`ANCA_RUN_BROWSER_TESTS=true`) covering connection, upload controls,
-  and absence of Shiny output errors.
-- Exercise lazy-loaded SDTM example datasets in installed packages; add regression
-  tests for logging, option cleanup, generated scripts, namespace loading,
-  repeated restores, excretion validation/recovery, and interval/slope handling.
-- Explicitly assert the expected TLG warning and accept only the two specific
-  empty-data warnings introduced by development PKNCA.
-- Add manual reproduction guides for restoration, excretion, and interval
-  metadata, plus an invalid body-weight-unit CSV fixture.
-
-## Validation recorded on the source branch
-
-These results come from `cran-comments.md` and `cran-release-checklist.md`;
-they were not rerun while writing this description.
-
-- Debian 13 / R 4.5.3 / CRAN PKNCA 0.12.1: recorded package check with
-  **0 errors, 0 warnings, and 1 NOTE** about unavailable time verification.
-- Recorded packaged suite: **4,262 passing expectations**, no failures or
-  warnings, and two explicit skips. Additional focused checks cover namespace
-  registration, excretion, and interval compatibility.
-- Recorded lint and roxygen checks passed; installed-app startup and namespace
-  use were checked with the app directory read-only. Compatibility checks also
-  exercised development PKNCA 0.12.1.9003.
-
-## Remaining review before submission
-
-- Run final platform and R-devel checks, remote CRAN incoming/URL checks on a
-  permitted network, and scientific acceptance testing; refresh release evidence.
-- Review the final version, NEWS, maintainer details, and submission comments.
-- The excretion manual guide references `excretion-valid.csv`, but that fixture
-  is absent from the final branch; restore it or update the guide before relying
-  on that paired-data procedure.
-
-This branch prepares a release candidate; it does not submit or tag a release.
+Lossless CSV inference intentionally preserves numeric-looking text until mapping establishes its role. This also prevents values beyond exact double precision from collapsing before identifier mapping. Package version advances to `0.2.0.9001`; the sibling branches use the same development version and remain independent.

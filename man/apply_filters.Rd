@@ -21,7 +21,9 @@ condition, and value to filter the dataset.
 }
 \details{
 The function iterates over the list of filters and applies each filter to the dataset.
-The supported conditions are \code{==}, \code{>}, \code{<}, \code{>=}, \code{<=} and \code{!=}.
+The supported conditions are \code{==}, \code{>}, \code{<}, \code{>=}, \code{<=}, \code{!=} and \code{min-max}.
+Equality/exclusion accept sets of values. A range accepts two numeric bounds
+or a signed range string such as \code{-2-2} or \code{1e-3-2e-3}. Invalid filters error.
 }
 \examples{
 # Example usage:

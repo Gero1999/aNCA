@@ -97,6 +97,16 @@ input_filter_server <- function(id, filters_metadata, initial_values = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     is_active <- reactiveVal(TRUE)
+    observers <- list()
+    keep_observer <- function(observer) {
+      observers[[length(observers) + 1L]] <<- observer
+    }
+    destroy <- function() {
+      is_active(FALSE)
+      output$title <- NULL
+      lapply(observers, function(observer) observer$destroy())
+      invisible(NULL)
+    }
     # Count of observeEvent(input$column) firings to skip.
     # Restore triggers column changes that must not apply defaults.
     skip_column_events <- reactiveVal(0L)
@@ -113,18 +123,20 @@ input_filter_server <- function(id, filters_metadata, initial_values = NULL) {
       # The column update takes effect on the next flush cycle, so we
       # schedule a second onFlushed only for the condition/value updates.
       session$onFlushed(function() {
+        if (!isolate(is_active())) return()
         updateSelectizeInput(
           session, "column", selected = initial_values$column
         )
         # Condition and value must wait for the column update to flush,
         # so we schedule them on the next cycle.
-        session$onFlushed(.restore_filter_values(
-          session, ns, filters_metadata, initial_values
-        ))
+        restore <- .restore_filter_values(session, ns, filters_metadata, initial_values)
+        session$onFlushed(function() {
+          if (isolate(is_active())) restore()
+        })
       })
     }
 
-    observeEvent(input$column, {
+    keep_observer(observeEvent(input$column, {
       remaining <- isolate(skip_column_events())
       if (remaining > 0L) {
         isolate(skip_column_events(remaining - 1L))
@@ -144,15 +156,15 @@ input_filter_server <- function(id, filters_metadata, initial_values = NULL) {
       shinyjs::toggleElement("value_text", condition = is_numeric())
       shinyjs::toggleElement("value_select", condition = !is_numeric())
       shinyjs::toggleState("condition", is_numeric())
-    })
+    }))
 
     output$title <- renderText(paste("Filter: ", input$column))
 
     # update filter list #
     applied_filters <- reactive({
-      req(!is.null(is_numeric()), input$column)
-      # check if filter was not removed #
+      # Cleared modules must stop reading obsolete inputs and metadata.
       if (is_active()) {
+        req(!is.null(is_numeric()), input$column)
         list(
           column = input$column,
           condition = input$condition,
@@ -165,11 +177,12 @@ input_filter_server <- function(id, filters_metadata, initial_values = NULL) {
     })
 
     # remove filter #
-    observeEvent(input$remove, {
+    keep_observer(observeEvent(input$remove, {
       removeUI(selector = paste0(".accordion-item[data-value='", session$ns(NULL), "']"))
-      is_active(FALSE)
-    })
+      destroy()
+    }))
 
+    attr(applied_filters, "destroy") <- destroy
     applied_filters
   })
 }

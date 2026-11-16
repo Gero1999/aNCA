@@ -23,6 +23,10 @@ Currently supported file formats include:
 \item \code{sas7bdat}
 \item \code{xpt}
 \item \code{parquet}}
+
+CSV columns are inferred only when conversion preserves their textual values;
+identifiers such as \code{001} remain character. Numeric analysis columns are
+converted after column mapping.
 }
 \examples{
 path <- system.file("shiny/tests/testthat/dummy_simplified.csv", package = "aNCA")

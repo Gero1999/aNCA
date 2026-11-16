@@ -11,7 +11,9 @@
 #'
 #' @details
 #' The function iterates over the list of filters and applies each filter to the dataset.
-#' The supported conditions are `==`, `>`, `<`, `>=`, `<=` and `!=`.
+#' The supported conditions are `==`, `>`, `<`, `>=`, `<=`, `!=` and `min-max`.
+#' Equality/exclusion accept sets of values. A range accepts two numeric bounds
+#' or a signed range string such as `-2-2` or `1e-3-2e-3`. Invalid filters error.
 #'
 #' @examples
 #' # Example usage:
@@ -29,16 +31,9 @@ apply_filters <- function(data, filters) {
   for (filter in filters) {
     # check if filter is valid #
     if (is.null(filter)) next
-    missing_fields <- setdiff(c("column", "condition", "value"), names(filter))
-    if (length(missing_fields) > 0) {
-      stop("Missing required filter fields: ", paste0(missing_fields, collapse = ", "))
-    }
-
+    .validate_filter(filter, data)
     column <- filter$column
     value <- filter$value
-
-    # check if data if correct #
-    if (!column %in% names(data)) stop("Data is missing filtered column: ", column)
 
     # Strip "(NA)" sentinel before numeric coercion
     na_result <- strip_na_sentinel(value)
@@ -46,13 +41,33 @@ apply_filters <- function(data, filters) {
     include_na <- na_result$include_na
 
     if (is.numeric(data[[column]]) && filter$condition != "min-max") {
-      value <- as.numeric(value)
+      converted <- suppressWarnings(as.numeric(value))
+      if (any(is.na(converted))) stop("Invalid numeric filter value for ", column, ".")
+      value <- converted
     }
 
     data <- apply_single_filter(data, column, filter$condition, value, include_na)
   }
 
   data
+}
+
+# Validate before evaluation so malformed filters cannot silently change selection.
+.validate_filter <- function(filter, data) {
+  missing_fields <- setdiff(c("column", "condition", "value"), names(filter))
+  if (length(missing_fields) > 0) {
+    stop("Missing required filter fields: ", paste0(missing_fields, collapse = ", "))
+  }
+  column <- filter$column
+  if (length(column) != 1L || is.na(column)) stop("Filter must specify one column.")
+  if (!column %in% names(data)) stop("Data is missing filtered column: ", column)
+  if (length(filter$condition) != 1L ||
+        !filter$condition %in% c("==", "!=", ">", "<", ">=", "<=", "min-max")) {
+    stop("Unsupported filter condition.")
+  }
+  if (filter$condition %in% c(">", "<", ">=", "<=") && length(filter$value) != 1L) {
+    stop("Comparison filters require one value.")
+  }
 }
 
 #' Strip the "(NA)" sentinel from a filter value vector
@@ -106,21 +121,21 @@ filter_neq <- function(data, column, value, include_na) {
   if (include_na) {
     filter(data, !(!!sym(column) %in% value) | is.na(!!sym(column)))
   } else {
-    filter(data, !!sym(column) != value)
+    filter(data, !is.na(!!sym(column)) & !(!!sym(column) %in% value))
   }
 }
 
 #' @keywords internal
 filter_min_max <- function(data, column, value) {
-  min_max <- value %>%
-    strsplit("-") %>%
-    unlist() %>%
-    as.numeric() %>%
-    suppressWarnings()
-
-  if (any(is.na(min_max)) || length(min_max) != 2) {
-    warning("Invalid min-max value format for ", column, ". Ignoring.")
-    return(data)
+  number <- "[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)(?:[eE][+-]?[0-9]+)?"
+  pattern <- paste0("^\\s*(", number, ")\\s*-\\s*(", number, ")\\s*$")
+  if (length(value) == 1L && !is.na(value)) {
+    matched <- regmatches(value, regexec(pattern, value, perl = TRUE))[[1]]
+    value <- if (length(matched) == 3L) matched[2:3] else NA_real_
+  }
+  min_max <- suppressWarnings(as.numeric(value))
+  if (length(min_max) != 2L || any(!is.finite(min_max)) || min_max[1] > min_max[2]) {
+    stop("Invalid min-max value for ", column, ": supply two finite, ascending bounds.")
   }
 
   filter(data, between(!!sym(column), min_max[1], min_max[2]))

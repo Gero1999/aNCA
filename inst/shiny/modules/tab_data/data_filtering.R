@@ -69,7 +69,8 @@ data_filtering_ui <- function(id) {
   )
 }
 
-#' Remove all existing filter panels and reset the counter.
+#' Remove all existing filter panels and stop their observers.
+#' Keep IDs monotonic so stale browser inputs cannot target replacement modules.
 #' @param session Shiny session.
 #' @param filters ReactiveValues storing filter modules.
 #' @param filter_counter ReactiveVal with current filter count.
@@ -82,9 +83,16 @@ data_filtering_ui <- function(id) {
         session$ns(fid), "']"
       )
     )
+    destroy <- attr(filters[[fid]], "destroy")
+    if (is.function(destroy)) destroy()
     filters[[fid]] <- NULL
   }
-  filter_counter(0)
+}
+
+# Collect active module values, discarding cleared entries before invoking them.
+.collect_filters <- function(filters) {
+  modules <- Filter(is.function, reactiveValuesToList(filters))
+  Filter(Negate(is.null), lapply(modules, function(module) module()))
 }
 
 #' Set up observers to restore imported filters and auto-submit them.
@@ -135,18 +143,19 @@ data_filtering_ui <- function(id) {
       )
     }
 
-    awaiting_columns(
-      vapply(valid_filters, `[[`, character(1), "column")
-    )
+    if (length(valid_filters) == 0L) {
+      awaiting_columns(NULL)
+      shinyjs::click("submit_filters")
+    } else {
+      awaiting_columns(vapply(valid_filters, `[[`, character(1), "column"))
+    }
   })
 
   # Auto-submit once all restored filters report the expected columns.
   observe({
     req(awaiting_columns())
 
-    current <- lapply(
-      reactiveValuesToList(filters), function(x) x()
-    ) %>% purrr::keep(\(x) !is.null(x))
+    current <- .collect_filters(filters)
 
     current_cols <- vapply(
       current, function(f) f$column %||% "", character(1)
@@ -169,8 +178,7 @@ data_filtering_ui <- function(id) {
   notification_id <- reactiveVal(NULL)
 
   observe({
-    applied_filters <- lapply(reactiveValuesToList(filters), function(x) x()) %>%
-      purrr::keep(\(x) !is.null(x))
+    applied_filters <- .collect_filters(filters)
     if (length(applied_filters) == 0 ||
           isTRUE(session$userData$auto_replay_active)) {
       removeNotification(notification_id())
@@ -223,10 +231,11 @@ data_filtering_server <- function(id, raw_adnca_data, imported_filters) {
     filtered_data <- reactive({
       removeNotification(filter_reminder_notification())
 
-      applied_filters <- lapply(reactiveValuesToList(filters), function(x) x()) %>%
-        purrr::keep(\(x) !is.null(x))
-
-      if (length(applied_filters) == 0) return(raw_adnca_data())
+      applied_filters <- .collect_filters(filters)
+      if (length(applied_filters) == 0) {
+        session$userData$applied_filters <- list()
+        return(raw_adnca_data())
+      }
 
       applied_filters %>%
         sapply(\(filt) glue::glue("* {filt$column} {filt$condition} {paste0(filt$value, collapse = ', ')}")) %>% # nolint
@@ -234,9 +243,7 @@ data_filtering_server <- function(id, raw_adnca_data, imported_filters) {
         paste0("Submitting the following filters:\n", .) %>%
         log_info()
 
-      session$userData$applied_filters <- applied_filters
-
-      withCallingHandlers({
+      result <- tryCatch(withCallingHandlers({
         apply_filters(raw_adnca_data(), applied_filters)
       }, warning = function(w) {
         log_warn(conditionMessage(w))
@@ -246,14 +253,18 @@ data_filtering_server <- function(id, raw_adnca_data, imported_filters) {
           duration = 10
         )
         invokeRestart("muffleWarning")
+      }), error = function(e) {
+        showNotification(conditionMessage(e), type = "error", duration = NULL)
+        validate(need(FALSE, conditionMessage(e)))
       })
+      session$userData$applied_filters <- applied_filters
+      result
     }) %>%
       bindEvent(input$submit_filters, raw_adnca_data())
 
     # Expose the applied filters list
     applied_filters_list <- reactive({
-      lapply(reactiveValuesToList(filters), function(x) x()) %>%
-        purrr::keep(\(x) !is.null(x))
+      .collect_filters(filters)
     })
 
     reactable_server(

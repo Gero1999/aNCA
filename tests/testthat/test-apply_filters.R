@@ -116,7 +116,7 @@ describe("apply_filters works correctly", {
     expect_equal(nrow(apply_filters(mtcars, filter)), 13)
   })
 
-  test_that("apply_filters warns with min-max argument NA", {
+  test_that("apply_filters errors with min-max argument NA", {
     filter <- list(
       filter2  <- list(
         column = "mpg",
@@ -124,7 +124,7 @@ describe("apply_filters works correctly", {
         value = c("15", NA)
       )
     )
-    expect_warning(apply_filters(mtcars, filter))
+    expect_error(apply_filters(mtcars, filter), "Invalid min-max value")
   })
 
   test_that("apply_filters skips NULL filters", {
@@ -210,5 +210,42 @@ describe("apply_filters throws errors for invalid input", {
       apply_filters(mtcars, filter),
       "Data is missing filtered column: nonexistant"
     )
+  })
+})
+
+describe("set exclusion and signed numeric ranges", {
+  it("excludes a set without recycling and keeps the existing NA policy", {
+    data <- data.frame(id = 1:7, x = c(1, 2, 3, 1, 2, 3, NA))
+    filter <- list(list(column = "x", condition = "!=", value = c("1", "2")))
+    expect_identical(apply_filters(data, filter)$id, c(3L, 6L))
+    filter[[1]]$value <- c("1", "2", "(NA)")
+    expect_identical(apply_filters(data, filter)$id, c(3L, 6L, 7L))
+    filter[[1]]$value <- "1"
+    expect_identical(apply_filters(data, filter)$id, c(2L, 3L, 5L, 6L))
+  })
+
+  it("parses negative, decimal and exponent bounds", {
+    data <- data.frame(x = c(-3, -2, -1, 0, 0.001, 0.002, 1, 2, 3))
+    selected <- function(value) {
+      apply_filters(data, list(list(column = "x", condition = "min-max", value = value)))$x
+    }
+    expect_equal(selected("-2-2"), data$x[2:8])
+    expect_equal(selected("-3--1"), c(-3, -2, -1))
+    expect_equal(selected(" 1e-3 - 2e-3 "), c(0.001, 0.002))
+    expect_equal(selected(c("-2", "-1")), c(-2, -1))
+    expect_equal(selected("-.5-+.5"), c(0, 0.001, 0.002))
+    for (invalid in list("2-1", "Inf-2", "bad", c("1", NA), "1-2-3")) {
+      expect_error(selected(invalid), "Invalid min-max value")
+    }
+  })
+
+  it("rejects invalid operators and comparison values explicitly", {
+    data <- data.frame(x = 1:3)
+    expect_error(apply_filters(data, list(list(column = "x", condition = "unknown", value = 1))),
+                 "Unsupported filter condition")
+    expect_error(apply_filters(data, list(list(column = "x", condition = ">", value = c(1, 2)))),
+                 "Comparison filters require one value")
+    expect_error(apply_filters(data, list(list(column = "x", condition = "==", value = "bad"))),
+                 "Invalid numeric filter value")
   })
 })

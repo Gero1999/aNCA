@@ -1,3 +1,10 @@
+# aNCA (development version)
+
+## Bug Fixes
+
+* Preserve numeric-looking subject identifiers during CSV import, including custom mapped identifiers, so distinct profiles are not merged.
+* Restore filters repeatedly without stale modules; exclude every selected value with `!=` and accept signed/exponent numeric ranges, reporting invalid filters explicitly.
+
 # aNCA 0.2.0
 
 ## Data & settings

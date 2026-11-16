@@ -4,6 +4,10 @@
 #' Currently supported file formats include:
 #' \itemize{`r paste0("\\item \\code{", names(readers), "}", collapse = "\n")`}
 #'
+#' CSV columns are inferred only when conversion preserves their textual values;
+#' identifiers such as `001` remain character. Numeric analysis columns are
+#' converted after column mapping.
+#'
 #' @param path Character string with path to the dataset file.
 #' @returns A data.frame object with loaded data.
 #'
@@ -12,7 +16,7 @@
 #' df <- read_pk(path)
 #'
 #' @importFrom tools file_ext
-#' @importFrom utils read.csv
+#' @importFrom utils read.csv type.convert
 #' @export
 read_pk <- function(path) {
   if (!file.exists(path)) stop("File does not exist: ", path)
@@ -51,7 +55,11 @@ validate_pk <- function(pk_data) {
 #' @noRd
 #' @keywords internal
 readers <- list(
-  csv = function(path) read.csv(path, na = c("", "NA")),
+  csv = function(path) {
+    data <- read.csv(path, na = c("", "NA"), colClasses = "character")
+    data[] <- lapply(data, .infer_lossless_csv_column)
+    data
+  },
   rds = function(path) readRDS(path),
   xlsx = function(path) {
     if (!requireNamespace("readxl", quietly = TRUE))
@@ -86,6 +94,14 @@ readers <- list(
     arrow::read_parquet(path)
   }
 )
+
+# Infer types only when their text representation can be recovered exactly.
+# The source column's eventual identifier/measurement role is not known yet.
+.infer_lossless_csv_column <- function(x) {
+  inferred <- type.convert(x, as.is = TRUE)
+  present <- !is.na(x)
+  if (all(as.character(inferred[present]) == x[present])) inferred else x
+}
 
 #' Helper Logic to parse and structure settings YAML
 #'

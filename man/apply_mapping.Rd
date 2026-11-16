@@ -49,6 +49,7 @@ and removes detected duplicate concentration records.
 \details{
 \itemize{
 \item Validates that all required columns are mapped and no duplicates exist.
+\item Converts mapped numeric measurement fields after preserving raw identifier text.
 \item If \code{ADOSEDUR} is not mapped, it is assigned a value of \code{0}.
 \item Removes concentration data duplicates using all columns except \code{ARRLT}, \code{NRRLT},
 and \code{ATPTREF}.

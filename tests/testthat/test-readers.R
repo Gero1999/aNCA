@@ -614,3 +614,41 @@ describe("read_settings: optional units overrides", {
     expect_equal(read_settings(path)$settings$units, units)
   })
 })
+
+describe("lossless CSV inference", {
+  it("preserves identifiers and numeric-looking custom source columns", {
+    path <- withr::local_tempfile(fileext = ".csv")
+    writeLines(c("participant,CONC,AFRLT", "001,1.0,-0.50", "1,2.0,1.50"), path)
+    raw <- read_pk(path)
+    expect_identical(raw$participant, c("001", "1"))
+    mapping <- list(USUBJID = "participant", AVAL = "CONC", AFRLT = "AFRLT",
+                    PARAM = "Drug", DOSETRT = "Drug", ADOSEDUR = "0")
+    mapped <- apply_mapping(raw, mapping, req_mappings = character())
+    expect_identical(as.character(mapped$USUBJID), c("001", "1"))
+    expect_equal(unname(mapped$AVAL), c(1, 2), ignore_attr = TRUE)
+    expect_equal(unname(mapped$AFRLT), c(-0.5, 1.5), ignore_attr = TRUE)
+    expect_true(is.numeric(mapped$AVAL))
+  })
+
+  it("keeps ordinary measurements numeric and preserves long identifiers", {
+    path <- withr::local_tempfile(fileext = ".csv")
+    writeLines(c("USUBJID,AVAL", "9007199254740993,1.25", "9007199254740992,2.5"), path)
+    raw <- read_pk(path)
+    expect_identical(raw$USUBJID, c("9007199254740993", "9007199254740992"))
+    expect_equal(raw$AVAL, c(1.25, 2.5))
+    rds <- withr::local_tempfile(fileext = ".rds")
+    expected <- data.frame(USUBJID = c("9007199254740993", "9007199254740992"),
+                           AVAL = c(1.25, 2.5))
+    saveRDS(expected, rds)
+    expect_identical(read_pk(rds), raw)
+  })
+
+  it("rejects invalid mapped numeric values instead of creating missing data", {
+    expect_error(
+      apply_mapping(data.frame(CONC = "not numeric"),
+                    list(AVAL = "CONC", ADOSEDUR = "0", DOSETRT = "Drug"),
+                    req_mappings = character()),
+      "Mapped numeric column 'AVAL' contains non-numeric values"
+    )
+  })
+})
