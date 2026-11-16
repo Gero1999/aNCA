@@ -192,17 +192,22 @@ manual_slopes_table_server <- function(
     }) %>%
       shiny::bindEvent(refresh_reactable())
 
-    # Dynamically attach observers for each editable column in the table
+    # Register each column once; table edits must not accumulate observers.
+    registered_columns <- reactiveVal(character())
     observe({
       req(manual_slopes())
-      purrr::walk(colnames(manual_slopes()), function(colname) {
+      new_columns <- setdiff(colnames(manual_slopes()), isolate(registered_columns()))
+      purrr::walk(new_columns, function(colname) {
         observeEvent(input[[paste0("edit_", colname)]], {
           edit <- input[[paste0("edit_", colname)]]
           edited_slopes <- manual_slopes()
+          req(edited_slopes, colname %in% names(edited_slopes))
+          req(length(edit$row) == 1L, edit$row >= 1L, edit$row <= nrow(edited_slopes))
           edited_slopes[edit$row, edit$column] <- edit$value
           manual_slopes(edited_slopes)
         })
       })
+      registered_columns(union(isolate(registered_columns()), new_columns))
     })
 
     # Output: manual_slopes (reactiveVal) and refresh_reactable (for UI updates)
