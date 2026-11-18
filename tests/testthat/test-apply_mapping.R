@@ -83,9 +83,32 @@ describe("apply_mapping", {
     )
   })
 
-  it("rejects an empty AEFRLT even when it is not explicitly mapped", {
+  it("omits unused optional analysis columns that are carried through by name", {
     test_df$AEFRLT <- c("", NA, " ")
-    expect_error(apply_mapping(test_df, mapping), "missing or blank values: AEFRLT")
+    test_df$TRTRINT <- NA_real_
+    test_df$NCAwXRS <- ""
+    expect_warning(
+      result <- apply_mapping(test_df, mapping),
+      "Ignoring optional columns that contain only missing or blank values: AEFRLT, TRTRINT"
+    )
+    expect_false(any(c("AEFRLT", "TRTRINT") %in% names(result)))
+    expect_equal(as.character(result$NCAwXRS), rep("", 3))
+  })
+
+  it("rejects empty analysis inputs that are used without an explicit mapping", {
+    test_df$DOSEA <- NA_real_
+    test_df$VOLUME <- c(1, 2, 3)
+    test_df$AEFRLT <- NA_real_
+    test_df$VOLUMEU <- ""
+    expect_error(apply_mapping(test_df, mapping), "missing or blank values: DOSEA, AEFRLT, VOLUMEU")
+  })
+
+  it("rejects empty optional columns explicitly selected for analysis or grouping", {
+    test_df$TAU <- NA_real_
+    test_df$COHORT <- ""
+    mapping$TRTRINT <- "TAU"
+    mapping$Grouping_Variables <- "COHORT"
+    expect_error(apply_mapping(test_df, mapping), "missing or blank values: TRTRINT, COHORT")
   })
 
   it("allows partially populated columns and unused empty columns", {
