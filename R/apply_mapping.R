@@ -56,7 +56,7 @@ apply_mapping <- function(
   .validate_column_mapping(mapping, req_mappings)
 
   new_dataset <- dataset
-  grouping_columns <- mapping$Grouping_Variables
+  selected_columns <- c(mapping$Grouping_Variables, mapping$NCAwXRS)
 
   # Drop meta-mapping keys that are not column renames: Grouping_Variables,
   # Metabolites, and NCAwXRS select existing columns / drive downstream options
@@ -113,10 +113,10 @@ apply_mapping <- function(
   # Standard analysis columns can be used downstream by name without a mapping.
   metadata <- metadata_nca_variables
   analysis_columns <- metadata[metadata$Dataset == "ADNCA" & metadata$is.mapped %in% TRUE, ]
-  # An empty exclusion reason means the record is eligible for analysis.
+  # Exclusion reason columns are only used when selected.
   implicit_columns <- setdiff(analysis_columns$Variable, "NCAwXRS")
   checked_columns <- intersect(
-    c(names(mapping), grouping_columns, implicit_columns, "EVID", "PARAMCD"),
+    c(names(mapping), selected_columns, implicit_columns, "EVID", "PARAMCD"),
     names(new_dataset)
   )
   empty <- vapply(new_dataset[checked_columns], function(column) {
@@ -127,35 +127,13 @@ apply_mapping <- function(
   }, logical(1))
   empty_columns <- names(empty)[empty]
 
-  # Omit blank optional inputs that were carried through by name. An explicit
-  # selection still needs data. Collection intervals and units are needed when
-  # their associated measurements are populated.
-  optional_columns <- analysis_columns$Variable[analysis_columns$Core %in% c("Perm", "Cond")]
-  required_columns <- c(req_mappings, names(mapping), grouping_columns)
-  populated_columns <- setdiff(checked_columns, empty_columns)
-  if ("VOLUME" %in% populated_columns) {
-    required_columns <- c(required_columns, "AEFRLT", "VOLUMEU")
-  }
-  if ("WTBL" %in% populated_columns) {
-    required_columns <- c(required_columns, "WTBLU")
-  }
-  omitted_columns <- intersect(empty_columns, setdiff(optional_columns, required_columns))
-  invalid_columns <- setdiff(empty_columns, omitted_columns)
-  if (length(invalid_columns)) {
+  if (length(empty_columns)) {
     stop(
       "These columns contain only missing or blank values: ",
-      paste(invalid_columns, collapse = ", "),
+      paste(empty_columns, collapse = ", "),
       ". Choose populated columns, or populate or remove the empty columns in the source dataset.",
       call. = FALSE
     )
-  }
-  if (length(omitted_columns)) {
-    warning(
-      "Ignoring optional columns that contain only missing or blank values: ",
-      paste(omitted_columns, collapse = ", "),
-      call. = FALSE
-    )
-    new_dataset <- new_dataset[setdiff(names(new_dataset), omitted_columns)]
   }
 
   # Special case: make ATPTREF a factor. TODO: Try make it in the mapping obj
