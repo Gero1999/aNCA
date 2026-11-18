@@ -109,6 +109,23 @@ apply_mapping <- function(
   redundant_cols <- unname(mapping)[!unname(mapping) %in% names(mapping)]
   new_dataset <- new_dataset[!names(new_dataset) %in% redundant_cols]
 
+  # AEFRLT is used for duration calculations even without an explicit mapping.
+  checked_columns <- intersect(c(names(mapping), "AEFRLT"), names(new_dataset))
+  empty_columns <- vapply(new_dataset[checked_columns], function(column) {
+    if (is.character(column) || is.factor(column)) {
+      return(all(is.na(column) | trimws(column) == ""))
+    }
+    all(is.na(column))
+  }, logical(1))
+  if (any(empty_columns)) {
+    stop(
+      "These columns contain only missing or blank values: ",
+      paste(names(empty_columns)[empty_columns], collapse = ", "),
+      ". Choose populated columns, or populate or remove the empty columns in the source dataset.",
+      call. = FALSE
+    )
+  }
+
   # Special case: make ATPTREF a factor. TODO: Try make it in the mapping obj
   if (!is.null(new_dataset$ATPTREF)) {
     new_dataset[["ATPTREF"]] <- as.factor(new_dataset[["ATPTREF"]])
