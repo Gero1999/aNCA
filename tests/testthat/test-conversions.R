@@ -138,7 +138,8 @@ describe("convert_volume_units()", {
     result <- convert_volume_units(df)
     expect_equal(result$VOLUME, 1000)
     expect_equal(result$VOLUMEU, "mL")
-    expect_equal(result$AMOUNTU, "ug")
+    # UDUNITS can render equivalent units with different symbols.
+    expect_equal(units::ud_convert(1, result$AMOUNTU, "ug"), 1)
   })
 
   it("should apply fallback conversion when direct conversion is not possible", {
@@ -168,17 +169,19 @@ describe("convert_volume_units()", {
     expect_true(is.na(result$AMOUNTU))
   })
 
-  it("should handle invalid AVALU formats", {
+  it("leaves volume unchanged when AVALU has no denominator", {
     df <- data.frame(
       PCSPEC = c("urine"),
       AVAL = c(100),
-      AVALU = c("ug"),  # invalid format
+      AVALU = c("ug"),
       VOLUME = c(1),
       VOLUMEU = c("L"),
       stringsAsFactors = FALSE
     )
     result <- convert_volume_units(df)
-    expect_true(result$AMOUNTU[1] == "L ug")
+    expect_equal(result$VOLUME, 1)
+    expect_equal(result$VOLUMEU, "L")
+    expect_equal(units::ud_convert(1, result$AMOUNTU, "L ug"), 1)
   })
 
   it("should handle multiple rows correctly", {
