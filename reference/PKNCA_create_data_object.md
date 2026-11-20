@@ -1,0 +1,206 @@
+# Creates a `PKNCA::PKNCAdata` object.
+
+Creates a
+[`PKNCA::PKNCAdata`](https://humanpred.github.io/pknca/reference/PKNCAdata.html)
+object.
+
+## Usage
+
+``` r
+PKNCA_create_data_object(
+  adnca_data,
+  mapping = NULL,
+  applied_filters = NULL,
+  time_duplicate_rows = NULL
+)
+```
+
+## Arguments
+
+- adnca_data:
+
+  Data frame containing raw or pre-processed ADNCA data.
+
+- mapping:
+
+  Optional named list of column mappings (as produced by the Shiny
+  mapping UI). When provided, the preprocessing pipeline is run
+  internally and NCA exclusion flag columns are derived from
+  `mapping$NCAwXRS` (plus `"DTYPE"`). Metabolite names are taken from
+  `mapping$Metabolites`. Defaults to `NULL` (no preprocessing, no
+  exclusion columns).
+
+- applied_filters:
+
+  Optional list of filters to apply (see
+  [`apply_filters()`](https://pharmaverse.github.io/aNCA/reference/apply_filters.md)).
+  Only used when `mapping` is provided. Defaults to `NULL`.
+
+- time_duplicate_rows:
+
+  Optional integer vector of row indices (in the mapped dataset, before
+  filtering) to mark as `"TIME DUPLICATE"` in the `DTYPE` column. When
+  `NULL` (the default) and time duplicates are detected, an error of
+  class `"time_duplicate_error"` is raised with the duplicate rows
+  attached. Use this to forward user-resolved selections from the Shiny
+  duplicate resolution modal.
+
+## Value
+
+`PKNCAdata` object with concentration, doses, and units based on ADNCA
+data.
+
+## Details
+
+This function creates a standard PKNCAdata object from raw or
+pre-processed ADNCA data.
+
+When `mapping` is provided, the function runs the full preprocessing
+pipeline internally: column mapping
+([`apply_mapping()`](https://pharmaverse.github.io/aNCA/reference/apply_mapping.md)),
+metabolite flagging
+([`create_metabfl()`](https://pharmaverse.github.io/aNCA/reference/create_metabfl.md)),
+class/length adjustment
+([`adjust_class_and_length()`](https://pharmaverse.github.io/aNCA/reference/adjust_class_and_length.md)),
+duplicate annotation, optional filtering
+([`apply_filters()`](https://pharmaverse.github.io/aNCA/reference/apply_filters.md)),
+and derives NCA exclusion flag columns from `mapping$NCAwXRS` (plus
+`"DTYPE"`).
+
+When `mapping` is `NULL` (the default), the function expects already
+pre-processed ADNCA data with the standard column names in place.
+
+The ADNCA data (after preprocessing, if applicable) must contain:
+
+- STUDYID: Study identifier.
+
+- PCSPEC: Matrix.
+
+- ROUTE: Route of administration.
+
+- DOSETRT: Drug identifier.
+
+- USUBJID: Unique subject identifier.
+
+- ATPTREF: (Non-standard column). Can be any column, used for filtering
+  the data for NCA
+
+- PARAM: Analyte.
+
+- AVAL: Analysis value.
+
+- AVALU: AVAL unit.
+
+- DOSEA: Dose amount.
+
+- DOSEU: Dose unit.
+
+- AFRLT: Actual time from first dose.
+
+- ARRLT: Actual time from reference dose.
+
+- NFRLT: Nominal time from first dose.
+
+- ADOSEDUR: Duration of dose.
+
+- RRLTU: Time unit.
+
+Then it proceeds to:
+
+1.  Creating pk concentration data using
+    [`format_pkncaconc_data()`](https://pharmaverse.github.io/aNCA/reference/format_pkncaconc_data.md).
+
+2.  Creating dosing data using
+    [`format_pkncadose_data()`](https://pharmaverse.github.io/aNCA/reference/format_pkncadose_data.md).
+
+3.  Creating `PKNCAconc` object using
+    [`PKNCA::PKNCAconc()`](https://humanpred.github.io/pknca/reference/PKNCAconc.html)
+    with formula
+    `AVAL ~ AFRLT | STUDYID + PCSPEC + DOSETRT + USUBJID / PARAM`.
+
+4.  Creating PKNCAdose object using
+    [`PKNCA::PKNCAdose()`](https://humanpred.github.io/pknca/reference/PKNCAdose.html)
+    with formula `DOSEA ~ AFRLT | STUDYID + DOSETRT + USUBJID`.
+
+5.  Creating PKNCAdata object using
+    [`PKNCA::PKNCAdata()`](https://humanpred.github.io/pknca/reference/PKNCAdata.html).
+
+6.  Updating units in PKNCAdata object so each analyte has its own unit.
+
+## Examples
+
+``` r
+adnca_data <- data.frame(
+  STUDYID = rep("STUDY001", 6),
+  PCSPEC = rep("Plasma", 6),
+  ROUTE = rep("IV", 6),
+  DOSETRT = rep("DrugA", 6),
+  USUBJID = rep("SUBJ001", 6),
+  ATPTREF = rep(1, 6),
+  PARAM = rep("AnalyteA", 6),
+  AVAL = c(0, 5, 10, 7, 3, 1),
+  AVALU = rep("ng/mL", 6),
+  DOSEA = rep(100, 6),
+  DOSEU = rep("mg", 6),
+  AFRLT = c(0, 1, 2, 3, 4, 6),
+  ARRLT = c(0, 1, 2, 3, 4, 6),
+  NFRLT = c(0, 1, 2, 3, 4, 6),
+  ADOSEDUR = rep(0.5, 6),
+  RRLTU = rep("hour", 6)
+)
+PKNCA_create_data_object(adnca_data)
+#> Formula for concentration:
+#>  AVAL ~ AFRLT | STUDYID + PCSPEC + DOSETRT + USUBJID/PARAM
+#> <environment: 0x61080ab0e2d8>
+#> Data are dense PK.
+#> With 1 subjects defined in the 'USUBJID' column.
+#> Nominal time column is: NFRLT
+#> 
+#> Data for concentration:
+#>   STUDYID PCSPEC ROUTE DOSETRT USUBJID ATPTREF    PARAM AVAL AVALU DOSEA DOSEU
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA    0 ng/mL   100    mg
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA    5 ng/mL   100    mg
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA   10 ng/mL   100    mg
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA    7 ng/mL   100    mg
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA    3 ng/mL   100    mg
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA    1 ng/mL   100    mg
+#>  AFRLT ARRLT NFRLT ADOSEDUR RRLTU CONCDUR nca_exclude     std_route DOSNOA
+#>      0     0     0      0.5  hour       0             intravascular      1
+#>      1     1     1      0.5  hour       0             intravascular      1
+#>      2     2     2      0.5  hour       0             intravascular      1
+#>      3     3     3      0.5  hour       0             intravascular      1
+#>      4     4     4      0.5  hour       0             intravascular      1
+#>      6     6     6      0.5  hour       0             intravascular      1
+#>  is.excluded.hl is.included.hl REASON exclude_half.life include_half.life
+#>           FALSE          FALSE                    FALSE                NA
+#>           FALSE          FALSE                    FALSE                NA
+#>           FALSE          FALSE                    FALSE                NA
+#>           FALSE          FALSE                    FALSE                NA
+#>           FALSE          FALSE                    FALSE                NA
+#>           FALSE          FALSE                    FALSE                NA
+#>  volume
+#>      NA
+#>      NA
+#>      NA
+#>      NA
+#>      NA
+#>      NA
+#> Formula for dosing:
+#>  DOSEA ~ AFRLT | STUDYID + DOSETRT + USUBJID
+#> Nominal time column is: NFRLT
+#> 
+#> Data for dosing:
+#>   STUDYID PCSPEC ROUTE DOSETRT USUBJID ATPTREF    PARAM AVAL AVALU DOSEA DOSEU
+#>  STUDY001 Plasma    IV   DrugA SUBJ001       1 AnalyteA    0 ng/mL   100    mg
+#>  AFRLT ARRLT NFRLT ADOSEDUR RRLTU CONCDUR nca_exclude     std_route DOSNOA
+#>      0     0     0      0.5  hour       0             intravascular      1
+#>  is.excluded.hl is.included.hl REASON exclude_half.life include_half.life
+#>           FALSE          FALSE                    FALSE                NA
+#>  exclude
+#>     <NA>
+#> 
+#> With 1 rows of interval specifications.
+#> With units
+#> With imputation: NA
+#> No options are set differently than default.
+```

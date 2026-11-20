@@ -1,0 +1,156 @@
+# Generate PK Concentration-Time Profile Plots
+
+This function generates a list of ggplots for PK concentration-time
+profiles. Records flagged with `PKSUMXF == "Y"` remain visible as
+crosses; other records retain circular points. A footnote explains the
+crosses in plots containing flagged records, including interactive plots
+and static exports.
+
+## Usage
+
+``` r
+pkcg01(
+  adnca = data(),
+  xvar = "AFRLT",
+  yvar = "AVAL",
+  xvar_unit = "RRLTU",
+  yvar_unit = "AVALU",
+  color_var = NULL,
+  color_var_label = NULL,
+  xbreaks_var = "NFRLT",
+  xbreaks_mindist = 0.5,
+  xmin = NA,
+  xmax = NA,
+  ymin = NA,
+  ymax = NA,
+  xlab = paste0("!", xvar, " [$", xvar_unit, "]"),
+  ylab = paste0("!", yvar, " [$", yvar_unit, "]"),
+  title = NULL,
+  subtitle = NULL,
+  footnote = NULL,
+  plotgroup_vars = c("ROUTE", "PCSPEC", "PARAM", "USUBJID"),
+  plotgroup_names = list(ROUTE = "Route", PCSPEC = "Specimen", PARAM = "Analyte", USUBJID
+    = "Subject ID"),
+  scale = c("LIN", "LOG", "SBS")[1],
+  studyid = "STUDYID",
+  trt_var = "TRT01A",
+  plotly = TRUE
+)
+```
+
+## Arguments
+
+- adnca:
+
+  A data frame containing the data.
+
+- xvar:
+
+  A character string of the variable name for the x-axis.
+
+- yvar:
+
+  A character string of the variable name for the y-axis.
+
+- xvar_unit:
+
+  A character string of the unit for the x-axis variable.
+
+- yvar_unit:
+
+  A character string of the unit for the y-axis variable.
+
+- color_var:
+
+  A character string of the variable name for the color.
+
+- color_var_label:
+
+  A character string of the color label.
+
+- xbreaks_var:
+
+  A character string of the x-axis breaks.
+
+- xbreaks_mindist:
+
+  A numeric value for `xbreak_mindist`.
+
+- xmin:
+
+  A numeric value for the minimum x-axis limit.
+
+- xmax:
+
+  A numeric value for the maximum x-axis limit.
+
+- ymin:
+
+  A numeric value for the minimum y-axis limit.
+
+- ymax:
+
+  A numeric value for the maximum y-axis limit.
+
+- xlab:
+
+  Character for x-axis label. Defaults: `xvar` label & `xvar_unit`.
+
+- ylab:
+
+  Character for y-axis label. Defaults: `yvar` label & `yvar_unit`.
+
+- title:
+
+  Character for plot title.
+
+- subtitle:
+
+  Character for plot subtitle.
+
+- footnote:
+
+  A character string of a manual footnote for the plot.
+
+- plotgroup_vars:
+
+  A character vector of the variables to group data.
+
+- plotgroup_names:
+
+  A character vector of the grouping variable names.
+
+- scale:
+
+  Scale for the Y axis, either "LIN" or "LOG".
+
+- studyid:
+
+  A character string specifying the study ID variable.
+
+- trt_var:
+
+  A character string specifying the treatment variable.
+
+- plotly:
+
+  Logical indicating whether to return plotly objects. Defaults to TRUE.
+
+## Value
+
+A list of ggplot or plotly objects for each unique group.
+
+## Author
+
+Gerardo Rodriguez
+
+## Examples
+
+``` r
+adnca <- adnca_example
+adnca <- subset(adnca, adnca$USUBJID %in% unique(adnca$USUBJID)[c(1, 2)])
+attr(adnca[["AFRLT"]], "label") <- "Actual time from first dose"
+attr(adnca[["AVAL"]], "label") <- "Analysis val"
+
+plots_lin <- pkcg01(adnca = adnca, xmax = 1, scale = "LIN")
+```

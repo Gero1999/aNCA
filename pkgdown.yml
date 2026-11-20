@@ -1,0 +1,20 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  adding_tlg: adding_tlg.html
+  aNCA: aNCA.html
+  background: background.html
+  contributing: contributing.html
+  design: design.html
+  example_r_script: example_r_script.html
+  FAQs: FAQs.html
+  governance: governance.html
+  manual: manual.html
+  ratio-calculations: ratio-calculations.html
+  roadmap: roadmap.html
+  validations: validations.html
+last_built: 2026-11-20T17:37Z
+urls:
+  reference: https://pharmaverse.github.io/aNCA/reference
+  article: https://pharmaverse.github.io/aNCA/articles

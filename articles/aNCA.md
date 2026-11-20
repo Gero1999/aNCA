@@ -1,0 +1,306 @@
+# aNCA Shiny App User Guide
+
+This guide will provide users with information on how to get started
+with the aNCA app.
+
+## Step 1: Prepare Dataset
+
+#### 1. Uploading a dataset
+
+Click **Upload File** and select the dataset you would like to use. The
+data can be in `.csv`, `sas7bdat`, `.xslx`, `.parquet` or `.rds` format.
+The best input for the app is data that follows the ADNCA format
+according to CDISC guidelines. Other formats of data will also work.
+Alternatively, for exploring the app, Users can use the Dummy dataset
+that is already uploaded.
+
+![Data upload](images/get_started/upload_dataset.gif)
+
+#### 2. Adding Filters
+
+Once your data is uploaded, examine it, and then click the “Next” button
+on the bottom right.
+
+![Mapping](images/get_started/examine_data_next.gif)
+
+If you want to change the data by adding filters, click the *Add Filter*
+button.
+
+![Adding filters](images/get_started/adding_filters.gif)
+
+> Don’t forget to click **Submit Filters**!
+
+#### 3. Data Mapping
+
+Click **Next** to get to the *Mapping* section.
+
+- Map the correct columns in your dataset to the corresponding label.
+
+- For Unit Variables, if your dataset has a defined column for units,
+  select it. Otherwise, by scrolling down, you can select the units for
+  the corresponding columns. For example, you can select the value “mg”
+  in AVALU.
+
+- Click **Next** to get to the *Preview* section where you can review
+  your dataset.
+
+![Mapping](images/get_started/data_mapping.gif)
+
+#### Data Format
+
+Some variables are mandatory (marked with \*), while others are
+optional. Custom variable names are supported as long as they are
+correctly mapped during the [Data Mapping](#id_##%20Data%20mapping)
+step.
+
+Click here to view a table describing each variable
+
+|  | Variable | Description | Format |
+|:---|:---|:---|:---|
+| **Grouping Identifiers** | STUDYID \* | Study Identifier | character |
+|  | USUBJID \* | Unique Subject Identifier | character/numeric |
+|  | ATPTREF \* | Can be any column, and used to filter data for NCA calculations | any |
+|  | TRT01A | Treatment Group Identifier (Actual) | character |
+|  | TRT01P | Treatment Group Identifier (Planned) | character |
+|  | AGE | Age of Subject | numeric |
+|  | RACE | Race of Subject | character |
+|  | SEX | Sex of Subject | character |
+| **Sample Variables** | PARAM \* | Analyte studied in the sample | character |
+|  | PCSPEC \* | Specimen Material Type | character |
+|  | AVAL \* | Analysis Value | numeric |
+| **Dose Variables** | DOSETRT \* | Drug/Treatment compound. When relevant, should match with PARAM | character |
+|  | ROUTE \* | Route of Administration, either {intravascular} or {extravascular} | character |
+|  | DOSEA \* | Actual Treatment Dose | numeric |
+|  | ADOSEDUR | Actual Treatment Dose | numeric |
+| **Time Variables** | AFRLT \* | Actual Relative Time from Analyte First Dose | numeric |
+|  | ARRLT \* | Actual Relative Time from Reference Dose | numeric |
+|  | NFRLT \* | Nominal Relative Time from Analyte First Dose | numeric |
+|  | NRRLT \* | Nominal Relative Time from Reference Dose | numeric |
+| **Time Variables** | AVALU | Analysis Value Unit | character |
+|  | DOSEU | Treatment Dose Units | character |
+|  | RRLTU | Relative Time from Reference Dose Unit | character |
+
+#### 4. Preview
+
+Review the data to ensure that the columns have been mapped correctly,
+and that all of your filters have been applied. If there are any
+problems with your data (duplicates, missing times), the application
+will display a warning message and in certain situations manual edits
+will be requested. Just follow the instructions. The ‘Exploration’,
+‘NCA’ and ‘TLG’ tabs on the left should now be accessible.
+
+## Step 2: Exploratory Analysis
+
+In the *Exploration* tab, you will find the different visualization
+options, including individual plots and mean plots.
+
+![Mapping](images/get_started/exploratory_plot_types.gif)
+
+Here, you can check out your data to see if the profiles and subjects
+look good, and use the selection boxes on the right to toggle the
+formatting and other aspects of the plots. These include changing the
+scale (linear/log) of the plots and adding/removing standard deviation
+error bars and confidence intervals on the mean plots.
+
+![Mapping](images/get_started/exploratory_graph_toggles.gif)
+
+Once you’ve made your choices you can download, save and inspect the
+visualizations in the top right corner of the plot.
+
+![Mapping](images/get_started/exploration_options.gif)
+
+#### Saving Plots to the Export
+
+Each exploration plot (Individual, Mean, and PK/Dose QC) has an **Add to
+Exports** button in its sidebar. Clicking this button saves a snapshot
+of the current plot to the ZIP export. Saved plots are numbered
+incrementally (e.g., `individualplot1.png`, `individualplot2.png`). When
+custom snapshots exist for a plot type, only the snapshots are exported
+and the default plot is omitted. If no snapshots are saved, the default
+plot (reflecting the most recent view) is exported instead.
+
+When exporting the ZIP file, if both PNG and HTML formats are selected,
+each saved plot will be available in both formats.
+
+## Step 3: Run NCA
+
+Click on the *NCA* tab in the menu bar to switch to the next section.
+
+### Setup - Data Selection
+
+1.  *Settings*: Choose the Analyte, Dose Number(s) and/or Specimen(s)
+    you would like to run the NCA on, the extrapolation method and the
+    NCA parameters to calculate. Select additional options including
+    partial AUCs, units, or rule sets to flag the data at the bottom of
+    this tab. You can also download the settings you have created, and
+    upload them again the next time you use the app, which will
+    implement the saved setup. Note, only settings downloaded from the
+    app can be uploaded here.
+
+![NCA settings](images/get_started/download_settings_nca.gif)
+
+*Slope Selector*: To add exclusions or manual slope selections, go to
+the *Slope Selector* tab in the *Setup* page. There are two different
+ways to add exclusions/selections to the slopes.
+
+##### Via the Buttons
+
+1.  For selection and exclusion, click on **+ Exclusion/Selection** and
+    input the corresponding information. RANGE refers to the data point
+    number in the slope, which can be seen by hovering over the points
+    in the plots below.
+2.  To remove, select the sample row and click **- Remove selected
+    rows**.
+
+![NCA settings](images/get_started/slope_selector_exclusion_remove.gif)
+
+##### Via the Plots
+
+For in-app guidance, you can click the ? button.
+
+![NCA settings](images/get_started/nca_setup_slope_selector.gif)
+
+1.  For selection, click the first point and then the last point you
+    want included in the slope. The plot should then update and a row
+    should be added to the table. There you can add your reason for
+    selection.
+2.  For exclusion, double click the point you want to exclude. The plot
+    should update along with the table.
+3.  To remove, either remove via the table selection, or repeat the same
+    action (i.e. select a new slope, double click the same point).
+
+*Summary*: In this tab, a table summarizes the settings you have
+selected.
+
+2.  Click **Run NCA** at the top of the page and check that the data is
+    as expected. You will automatically be redirected to the *Results*
+    tab.
+
+![NCA settings](images/get_started/run_nca_button.gif)
+
+## Step 4: NCA Results
+
+### Main Results
+
+The *NCA Results* tab shows the individual results of the NCA. You can
+select which parameters you would like to view. Results in red have been
+flagged as “FALSE” for the rule sets selected, results in purple are
+flagged as “MISSING”, and results in white are not flagged. Here, you
+have the option to download all of the results and just the NCA data,
+this is found at the bottom of the page.
+
+![NCA settings](images/get_started/nca_results_download.gif)
+
+### Slopes Information - Exclusions and Manual Slopes after NCA
+
+You may also choose to add some exclusions or manual slope selections
+after the NCA has been run if you wish, this up to you. Just go back to
+the *Setup* tab and follow the instructions above about the *Slope
+Selector* in Step 3. Once the exclusions/selections have been added,
+click **Run NCA** again.
+
+> If you do not click **Run NCA**, the manual slopes will not be added!
+
+Back in the *Results* tab, click on the *Slopes Information* tab to view
+more detailed information about the slopes selected in the NCA. This is
+also where you can check that your slope modifications have been applied
+in the *Manual Adjustments* tab.
+
+### Descriptive Statistics
+
+The *Descriptive Statistics* tab allows you to see the statistical data
+calculated by the NCA. This includes mean, SD, min, max and others, you
+can choose which statistics and parameters you wish to display in your
+summary table. You can also choose which variables you want to group by.
+After you have selected your preferences, you can scroll down and press
+*Download NCA Summary Data* to download this summary table.
+
+![NCA settings](images/get_started/descriptive_statistics.gif)
+
+#### Parameter Datasets
+
+In the Parameter Datasets tab you can see and export the ADPP, ADNCA,
+and PP datasets.
+
+![Parameter Datasets](images/get_started/parameter_datasets.gif)
+
+### Additional Analysis
+
+In the *Additional Analysis* tab, you can calculate tissue-matrix ratios
+and perform excretion analysis where applicable.
+
+*Concentration Ratios*: You can calculate tissue-matrix ratios in this
+tab. Input which specimen you would like as the numerator and
+denominator, and you can choose what variable you would like to
+summarize this data by. This will generate a matrix ratios results table
+which you can download.
+
+![Parameter Datasets](images/get_started/matrix_ratios.gif)
+
+## Step 5: TLGs
+
+> Currently work in progress. Not all TLGs and features are available.
+
+After performing the analysis, you can prepare reports regarding the
+analysis, including various tables, listings and graphs.
+
+#### Order Details
+
+Firstly, you will need to prepare an order for TLGs. The table in the
+*Order details* tab will display some default TLGs with their metadata.
+You can add additional reports by clicking the **Add TLG** button. This
+will bring up a list of available, defined TLGs. Select the ones you are
+interested in and click the **Add TLGs to Order** button.
+
+![Default TLG table](images/get_started/tlg_selection_add.gif)
+
+You can also remove unwanted entries by selecting them and clicking
+**Remove TLG**.
+
+![Default TLG table](images/get_started/tlg_selection_remove.gif)
+
+When you are happy with the selection, click **Submit Order Details**.
+
+#### Navigating the TLGs
+
+The application provides three separate tabs for differentiating
+**Tables**, **Listings** and **Graphs**, these are found at the top.
+
+Each tab will show a sidebar on the left of the screen. This will let
+you navigate each specific entry.
+
+![TLG navigation](images/get_started/tlg_sidebar.gif)
+
+Also, in each tab using the widgets at the top you can specify the
+number of entries per page and change the pages.
+
+![TLG pages](images/get_started/tlg_widgets.gif)
+
+Lastly, the widgets on the right are used for customizing the resulting
+reports.
+
+![TLG customization](images/get_started/tlg_customizing_reports.gif)
+
+#### Customizing the TLGs
+
+Exact customization options available for any given TLGs will depend on
+their implementation. Usually, you will be able to specify things like
+titles and footnotes, axis labels, limits or grouping variables.
+
+Simply provide the desired value in a given widget and the TLG will
+update in real time.
+
+Leaving a widget empty will induce default behavior of the TLG.
+
+Some fields will provide additional functionalities. For text fields, a
+special syntax might be used to reference the values or attributes of
+the data:
+
+- prefacing a column name with `!` will reference the **label
+  attribute** of a given column, e.g. `!DOSEU` will translate to
+  `Treatment Dose Units`.
+- prefacing a column name with `$` will reference the **value** for a
+  given column, e.g. `$DOSEU` will translate to mg (for the dummy
+  dataset).
+
+You can always click on the **?** button for help.
