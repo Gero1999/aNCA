@@ -1,6 +1,6 @@
 # aNCA (development version)
 
-* Parameter selection uses the installed PKNCA version, accepts renamed parameters in saved settings, and reports unavailable selections before automatic analysis. VSSIL is available on PKNCA builds that support it.
+* Parameter selection accepts renamed parameters in saved settings and reports unavailable selections before automatic analysis. The NCA Results tab displays the calculated units without a join warning when two parameter names map to the same result code. VSSIL is available on PKNCA builds that support it.
 
 # aNCA 0.2.0
 

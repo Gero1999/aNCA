@@ -49,41 +49,16 @@ nca_results_server <- function(id, pknca_data, res_nca, settings, ratio_table, g
     ns <- session$ns
 
     final_results <- reactive({
-      req(res_nca())
-      res <- res_nca()
-
-      #' Apply units
-      if (!is.null(session$userData$units_table())) {
-        res$data$units <- session$userData$units_table()
-        res$result <- res$result %>%
-          select(-PPSTRESU, -PPSTRES) %>%
-          left_join(
-            session$userData$units_table() %>%
-              mutate(PPTESTCD = translate_terms(PPTESTCD, "PKNCA", "PPTESTCD")),
-            by = intersect(names(.), names(session$userData$units_table()))
-          ) %>%
-          mutate(PPSTRES = ifelse(
-            !is.null(conversion_factor),
-            PPORRES * conversion_factor,
-            PPORRES
-          )) %>%
-          select(-conversion_factor)
-      }
-
-      #' Transform results
-      results <- res_nca()
-
-      # Transform results
+      # The NCA run already applied unit conversions using the PKNCA parameter names.
+      results <- req(res_nca())
       extra_vars_to_keep <- c(grouping_vars(), "DOSEA", "ATPTREF", "ROUTE")
       session$userData$extra_vars_to_keep <- extra_vars_to_keep
 
-      final_results <- pivot_wider_pknca_results(
+      pivot_wider_pknca_results(
         results,
         flag_rules = settings()$flags,
         extra_vars_to_keep = extra_vars_to_keep
       )
-
-      final_results
     })
 
     observeEvent(final_results(), {
