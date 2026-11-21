@@ -102,6 +102,21 @@ nca_setup_server <- function(id, data, adnca_data, extra_group_vars, settings_ov
       imported_params
     )
 
+    skipped_parameters <- reactive({
+      c(parameters_output$skipped(), settings_output$skipped_partial())
+    })
+    observeEvent(skipped_parameters(), {
+      if (length(skipped_parameters())) {
+        showNotification(paste0(
+          "Saved parameters unavailable with PKNCA ", utils::packageVersion("PKNCA"), ": ",
+          paste(skipped_parameters(), collapse = "; "),
+          ". Review Parameter Selection before running NCA."
+        ), id = ns("unavailable"), type = "warning", duration = NULL)
+      } else {
+        removeNotification(ns("unavailable"))
+      }
+    }, ignoreNULL = FALSE)
+
     final_settings <- reactive({
 
       req(settings(), parameters_output$selections(), general_exclusions())
@@ -271,6 +286,7 @@ nca_setup_server <- function(id, data, adnca_data, extra_group_vars, settings_ov
       processed_pknca_data = processed_pknca_data,
       settings = final_settings,
       general_settings = settings_output,
+      skipped_parameters = skipped_parameters,
       ratio_table = ratio_table,
       slope_rules = slope_rules
     )

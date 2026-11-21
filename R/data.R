@@ -3,9 +3,11 @@
 #'
 #' A dataset containing the mapping between PKNCA terms and CDISC terms. It mainly involves:
 #' - Parameters: PPTEST, PPTESTCD
-#' @format A data frame with 123 rows and 6 variables:
+#' @format A data frame with one row per parameter entry and the following variables:
 #' \describe{
-#'   \item{PKNCA}{PKNCA term}
+#'   \item{PKNCA}{Stable parameter name used in saved aNCA settings}
+#'   \item{PKNCA_preferred}{Replacement name to request when registered by PKNCA}
+#'   \item{min_pknca_version}{Optional minimum PKNCA version required by aNCA for this parameter}
 #'   \item{PPANMETH}{PPANMETH term, specifying when relevant the calculation method for PPTESTCD}
 #'   \item{PPTESTCD}{CDISC term}
 #'   \item{PPTEST}{Official CDISC term}

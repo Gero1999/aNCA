@@ -234,6 +234,11 @@ settings_server <- function(id, data, adnca_data, settings_override) {
       choices <- unique(data()$PARAM) %>% na.omit()
       settings <- settings_override()
 
+      if (!is.null(settings$int_parameters)) {
+        settings$int_parameters <- settings$int_parameters[
+          !settings$int_parameters$parameter %in% skipped_partial(), , drop = FALSE
+        ]
+      }
       restore <- .restore_settings(
         settings, choices, data(),
         adnca_data, session, int_parameters,
@@ -358,12 +363,18 @@ settings_server <- function(id, data, adnca_data, settings_override) {
 
     # Reactive value to store the partial intervals data table
     # Define the parameters that can be used for partial area calculations
-    PARTIAL_INT_PARAMS <- metadata_nca_parameters %>%
+    PARTIAL_INT_PARAMS <- aNCA:::.pknca_parameter_catalog() %>%
       filter(
+        !is.na(runtime_name),
         grepl("INT", PPTESTCD),
         TYPE != "PKNCA-not-covered"
       ) %>%
       arrange(PPTESTCD)
+
+    skipped_partial <- reactive({
+      restored <- .filter_valid_int_parameters(settings_override()$int_parameters)
+      setdiff(restored$parameter, PARTIAL_INT_PARAMS$PPTESTCD)
+    })
 
     int_parameters <- reactiveVal(
       tibble(
@@ -515,6 +526,7 @@ settings_server <- function(id, data, adnca_data, settings_override) {
 
     list(
       all = settings_debounced,
+      skipped_partial = skipped_partial,
       analyte = reactive(input$select_analyte),
       pcspec = reactive(input$select_pcspec),
       profile = reactive(input$select_profile)

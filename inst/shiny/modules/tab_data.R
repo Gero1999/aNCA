@@ -246,7 +246,7 @@
   vol_params <- metadata_nca_parameters$PKNCA[
     metadata_nca_parameters$unit_type == "volume"
   ]
-  is_vol <- units$PPTESTCD %in% vol_params
+  is_vol <- aNCA:::.pknca_settings_keys(units$PPTESTCD) %in% vol_params
 
   new_ppstresu <- ifelse(
     is_vol,

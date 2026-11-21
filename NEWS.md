@@ -1,3 +1,7 @@
+# aNCA (development version)
+
+* Parameter selection uses the installed PKNCA version, accepts renamed parameters in saved settings, and reports unavailable selections before automatic analysis. VSSIL is available on PKNCA builds that support it.
+
 # aNCA 0.2.0
 
 ## Data & settings

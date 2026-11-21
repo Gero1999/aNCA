@@ -1,6 +1,3 @@
-# Keep saved selections and CDISC mappings stable across PKNCA versions.
-PKNCA_PARAMETER_RENAMES <- c(vss.obs = "vss.inf.obs")
-
 #' Translate Terms from One Nomenclature to Another
 #'
 #' This function translates a character vector of terms from one nomenclature to another using a
@@ -21,7 +18,7 @@ PKNCA_PARAMETER_RENAMES <- c(vss.obs = "vss.inf.obs")
 translate_terms <- function(input_terms,
                             mapping_col = "PKNCA",
                             target_col = "PPTESTCD",
-                            metadata = metadata_nca_parameters) {
+                            metadata = aNCA::metadata_nca_parameters) {
 
   # Check if mapping_col and target_col are single character strings
   if (length(c(mapping_col, target_col)) != 2 ||
@@ -34,8 +31,10 @@ translate_terms <- function(input_terms,
     stop("mapping_col and target_col must exist in metadata.")
   }
 
-  if (missing(metadata) && mapping_col == "PKNCA") {
-    metadata <- .add_pknca_aliases(metadata)
+  if (identical(mapping_col, target_col)) return(input_terms)
+
+  if (mapping_col == "PKNCA" && "PKNCA_preferred" %in% names(metadata)) {
+    input_terms <- .pknca_settings_keys(input_terms, metadata)
   }
 
   # Create a named vector for translation
@@ -47,14 +46,4 @@ translate_terms <- function(input_terms,
                              input_terms)
 
   translated_terms
-}
-
-.add_pknca_aliases <- function(metadata) {
-  renames <- PKNCA_PARAMETER_RENAMES[
-    names(PKNCA_PARAMETER_RENAMES) %in% metadata$PKNCA &
-      !PKNCA_PARAMETER_RENAMES %in% metadata$PKNCA
-  ]
-  aliases <- metadata[match(names(renames), metadata$PKNCA), , drop = FALSE]
-  aliases$PKNCA <- unname(renames)
-  rbind(metadata, aliases)
 }

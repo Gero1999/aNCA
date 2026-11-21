@@ -141,8 +141,8 @@ excretion_server <- function(id, input_pknca_data) {
                      pknca_data = NULL,
                      multiple = FALSE)
 
-      urine_params_to_select <- metadata_nca_parameters %>%
-        filter(TYPE == "Urine")
+      urine_params_to_select <- aNCA:::.pknca_parameter_catalog() %>%
+        filter(TYPE == "Urine", !is.na(runtime_name))
 
       parameters_to_select <- urine_params_to_select$PPTESTCD
 
@@ -201,7 +201,9 @@ excretion_server <- function(id, input_pknca_data) {
 
         # Update intervals
         # Translate user-selected PPTESTCDs to PKNCA column names
-        pknca_params <- translate_terms(input$param_select, "PPTESTCD", "PKNCA")
+        pknca_params <- aNCA:::.resolve_pknca_parameters(
+          translate_terms(input$param_select, "PPTESTCD", "PKNCA")
+        )
 
         # dose profile intervals
         data$intervals <- format_pkncadata_intervals(data$conc,

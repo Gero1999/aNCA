@@ -4,7 +4,10 @@
 \alias{rm_impute_obs_params}
 \title{Apply Imputation for PKNCA Data}
 \usage{
-rm_impute_obs_params(data, metadata_nca_parameters = metadata_nca_parameters)
+rm_impute_obs_params(
+  data,
+  metadata_nca_parameters = aNCA::metadata_nca_parameters
+)
 }
 \arguments{
 \item{data}{A PKNCAdata object.}

@@ -8,7 +8,7 @@ translate_terms(
   input_terms,
   mapping_col = "PKNCA",
   target_col = "PPTESTCD",
-  metadata = metadata_nca_parameters
+  metadata = aNCA::metadata_nca_parameters
 )
 }
 \arguments{

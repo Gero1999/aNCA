@@ -234,6 +234,13 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
       }
     })
 
+    observe({
+      req(auto_nca_pending(), length(nca_setup$skipped_parameters()) > 0)
+      auto_nca_pending(FALSE)
+      session$userData$auto_replay_active <- FALSE
+      shiny::removeModal()
+    }, priority = 1)
+
     # Trigger NCA once the debounced data object has settled.
     observeEvent(pknca_data_debounced(), {
       if (!auto_nca_pending()) return()

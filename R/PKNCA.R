@@ -494,6 +494,10 @@ PKNCA_calculate_nca <- function(pknca_data, blq_rule = NULL) { # nolint: object_
 
   pknca_data <- resolve_hl_incl_excl_conflicts(pknca_data)
 
+  catalog <- .pknca_parameter_catalog()
+  pknca_data$intervals <- .normalize_pknca_intervals(pknca_data$intervals, catalog)
+  pknca_data$units <- .normalize_pknca_units(pknca_data$units, catalog)
+
   # Calculate results using PKNCA
   results <- PKNCA::pk.nca(data = pknca_data, verbose = FALSE)
 
@@ -734,16 +738,22 @@ PKNCA_build_units_table <- function(o_conc, o_dose) { # nolint
 }
 
 # Use the same parameter name for unit settings and the interval flags.
-.normalize_pknca_units <- function(units) {
-  vss_names <- c(PKNCA_PARAMETER_RENAMES[["vss.obs"]], "vss.obs")
-  preferred <- intersect(vss_names, names(PKNCA::get.interval.cols()))[1L]
-  old <- units$PPTESTCD %in% setdiff(vss_names, preferred)
-  if (is.na(preferred) || !any(old)) return(units)
+.normalize_pknca_units <- function(units, catalog = .pknca_parameter_catalog()) {
+  keys <- .pknca_settings_keys(units$PPTESTCD, catalog)
+  runtime <- catalog$runtime_name[match(keys, catalog$PKNCA)]
+  old <- !is.na(runtime) & runtime != units$PPTESTCD
+  if (!any(old)) return(units)
 
   aliases <- units[old, , drop = FALSE]
-  aliases$PPTESTCD <- preferred
+  aliases$PPTESTCD <- runtime[old]
   units <- units[!old, , drop = FALSE]
   keys <- setdiff(names(units), c("PPSTRESU", "PPSTRES", "conversion_factor"))
+  # Older saved tables can include both a customized alias and a default
+  # row for the preferred name. Keep an explicit conversion in either spelling.
+  if (all(c("PPORRESU", "PPSTRESU") %in% names(units))) {
+    overrides <- anti_join(changed_units(aliases), changed_units(units), by = keys)
+    units <- rows_update(units, overrides, by = keys, unmatched = "ignore")
+  }
   bind_rows(units, anti_join(aliases, units, by = keys))
 }
 

@@ -238,7 +238,7 @@ update_main_intervals <- function(
   }
 
   all_pknca_params <- setdiff(names(PKNCA::get.interval.cols()), c("start", "end"))
-  renamed_params <- PKNCA_PARAMETER_RENAMES[PKNCA_PARAMETER_RENAMES %in% all_pknca_params]
+  catalog <- .pknca_parameter_catalog(registered = all_pknca_params)
 
   study_types_df <- .derive_study_types(data)
 
@@ -258,8 +258,7 @@ update_main_intervals <- function(
     for (study_type in names(parameter_selections)) {
       params_for_type <- parameter_selections[[study_type]]
       if (length(params_for_type) > 0) {
-        old <- params_for_type %in% names(renamed_params)
-        params_for_type[old] <- unname(renamed_params[params_for_type[old]])
+        params_for_type <- .resolve_pknca_parameters(params_for_type, catalog, all_pknca_params)
         updated_intervals <- updated_intervals %>%
           mutate(across(
             .cols = all_of(params_for_type),
@@ -276,7 +275,9 @@ update_main_intervals <- function(
   # Add partial AUCs if any
   auc_ranges <- int_parameters %>%
     filter(!is.na(start_auc), !is.na(end_auc), start_auc >= 0, end_auc > start_auc) %>%
-    mutate(parameter = translate_terms(parameter, "PPTESTCD", "PKNCA"))
+    mutate(parameter = .resolve_pknca_parameters(
+      translate_terms(parameter, "PPTESTCD", "PKNCA"), catalog, all_pknca_params
+    ))
 
   # Make a list of intervals from valid AUC ranges
   intervals_list <- pmap(auc_ranges, function(start_auc, end_auc, parameter) {
@@ -332,7 +333,7 @@ update_main_intervals <- function(
 
   ############################################
   # Remove any imputation from the observational parameters
-  data <- rm_impute_obs_params(data, metadata_nca_parameters)
+  data <- rm_impute_obs_params(data)
 
   data
 }
@@ -348,19 +349,27 @@ update_main_intervals <- function(
 #' @returns A PKNCAdata object with imputation rules applied.
 #' @import dplyr
 #'
-rm_impute_obs_params <- function(data, metadata_nca_parameters = metadata_nca_parameters) {
+rm_impute_obs_params <- function(data, metadata_nca_parameters = aNCA::metadata_nca_parameters) {
   # Don't impute parameters that are not AUC dependent
   params_auc_dep <- metadata_nca_parameters %>%
     filter(grepl("auc|aumc", PKNCA) | grepl("auc", Depends)) %>%
     pull(PKNCA)
+
+  # Some inputs to newer parameters have no separate row in the aNCA catalog.
+  registry <- PKNCA::get.interval.cols()
+  auc_inputs <- vapply(registry, function(spec) any(grepl("auc|aumc", spec$depends)), logical(1))
+  params_auc_dep <- union(params_auc_dep, names(registry)[auc_inputs])
 
   params_not_to_impute <- metadata_nca_parameters %>%
     filter(
       !grepl("auc|aumc", PKNCA),
       !grepl(paste0(params_auc_dep, collapse = "|"), Depends)
     ) %>%
-    pull(PKNCA) %>%
-    intersect(names(PKNCA::get.interval.cols()))
+    pull(PKNCA)
+  catalog <- .pknca_parameter_catalog()
+  params_not_to_impute <- intersect(
+    catalog$runtime_name[catalog$PKNCA %in% params_not_to_impute], names(data$intervals)
+  )
 
   # If the impute column doesn't exist, initialize it so downstream access is safe
   if (!"impute" %in% names(data$intervals)) {

@@ -5,9 +5,11 @@ local({
   shiny_dir <- system.file("shiny", package = "aNCA")
   source(file.path(shiny_dir, "modules", "tab_nca", "nca_setup.R"), local = export_env)
   source(file.path(shiny_dir, "functions", "zip-utils.R"), local = export_env)
-  export_env$settings_server <- function(...) list(all = reactive(list(method = "linear")))
+  export_env$settings_server <- function(...) {
+    list(all = reactive(list(method = "linear")), skipped_partial = reactive(NULL))
+  }
   export_env$parameter_selection_server <- function(...) {
-    list(selections = reactive(list(cmax = TRUE)),
+    list(selections = reactive(list(cmax = TRUE)), skipped = reactive(NULL),
          types_df = reactive(data.frame(type = "single")))
   }
   export_env$general_exclusions_server <- function(...) reactive(data.frame(exclude = FALSE))

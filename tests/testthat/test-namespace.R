@@ -9,6 +9,9 @@ describe("namespace-only PKNCA extensions", {
       "stopifnot(identical(search(), c('.GlobalEnv', 'Autoloads', 'package:base')))",
       "loadNamespace('aNCA')",
       "stopifnot(!('package:aNCA' %in% search()))",
+      "stopifnot(aNCA::translate_terms('vss.inf.obs') == 'VSSO')",
+      "vss <- aNCA:::.resolve_pknca_parameters('vss.obs')",
+      "stopifnot(vss %in% names(PKNCA::get.interval.cols()))",
       "stopifnot(all(c('ertlst', 'ertmax', 'volpk', 'fe') %in% names(PKNCA::get.interval.cols())))",
       "fun <- utils::getAnywhere(PKNCA::get.interval.cols()[['volpk']]$FUN)$objs[[1]]",
       "stopifnot(isTRUE(all.equal(fun(c(1, 2, 3)), 6)))"

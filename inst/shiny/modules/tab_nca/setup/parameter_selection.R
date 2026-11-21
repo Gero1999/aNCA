@@ -174,7 +174,8 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
     )
 
     # List of parameter data frames by type
-    all_params <- metadata_nca_parameters %>%
+    all_params <- aNCA:::.pknca_parameter_catalog() %>%
+      filter(!is.na(runtime_name)) %>%
       filter(!TYPE %in% c("PKNCA-not-covered", "IV")) %>%
       filter(show_in_matrix_selection) %>%
       select(
@@ -224,28 +225,25 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
     # ReactiveVal for parameter selection state (wide df with boolean columns)
     selections_state <- reactiveVal()
 
-    # Build the base state from data or overrides
-    base_selections <- reactive({
+    study_types_list <- reactive(unique(study_types_df()$type))
+    imported <- reactive(lapply(parameter_override(), aNCA:::.pknca_settings_keys))
+    eligible <- reactive({
       req(study_types_df())
-      study_type_names <- unique(study_types_df()$type)
-
-      selections_override <- tryCatch({
-        parameter_override()
-      }, error = function(e) {
-        NULL
-      })
-
-      .apply_parameter_selections(
-        selection_df = all_params,
-        study_type_names = study_type_names,
-        default_params = DEFAULT_PARAMS,
-        selections_override = selections_override
-      ) %>%
-        select(-starts_with("can_"))
+      state <- .apply_parameter_selections(all_params, study_types_list(), all_params$PKNCA)
+      # Older sessions can contain explicit overrides of the study-type defaults.
+      for (st in intersect(study_types_list(), names(imported()))) {
+        state[[st]] <- state[[st]] | state$PKNCA %in% imported()[[st]]
+      }
+      state
     })
 
-    # Get a simple reactive list of study type names
-    study_types_list <- reactive(unique(study_types_df()$type))
+    # Compare each saved selection with what the matrix can actually restore.
+    skipped <- reactive(.unavailable_selections(imported(), study_types_list(), all_params$PKNCA))
+    base_selections <- reactive({
+      req(study_types_df())
+      .apply_parameter_selections(all_params, study_types_list(), DEFAULT_PARAMS, imported()) %>%
+        select(-starts_with("can_"))
+    })
 
     # Sync the base state to the live state.
     # Always updates selections_state; the renderUI below handles
@@ -264,7 +262,7 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
       req(state)
       study_types <- study_types_list()
 
-      .build_matrix_html(state, study_types, ns)
+      .build_matrix_html(state, study_types, ns, eligible())
     })
 
     # --- Handle checkbox clicks ---
@@ -278,7 +276,7 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
       st <- click$study_type
       pknca_code <- click$param
 
-      if (st %in% names(state) && pknca_code %in% state$PKNCA) {
+      if (st %in% study_types_list() && pknca_code %in% state$PKNCA[eligible()[[st]]]) {
         row_idx <- which(state$PKNCA == pknca_code)
         state[[st]][row_idx] <- isTRUE(click$checked)
         selections_state(state)
@@ -291,7 +289,7 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
       req(state)
       study_type_names <- study_types_list()
       for (st in study_type_names) {
-        state[[st]] <- TRUE
+        state[[st]] <- eligible()[[st]]
       }
       selections_state(state)
       .sync_checkboxes_js(session, state, study_type_names)
@@ -369,6 +367,7 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
     # Return list — same interface as before
     list(
       selections = parameter_lists_by_type,
+      skipped = skipped,
       types_df = study_types_df
     )
   })
@@ -485,6 +484,14 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
   )
 }
 
+.unavailable_selections <- function(selections, study_types, available) {
+  types <- intersect(names(selections), study_types)
+  unlist(lapply(types, function(st) {
+    missing <- setdiff(selections[[st]], available)
+    if (length(missing)) paste0(st, " (", paste(missing, collapse = ", "), ")")
+  }), use.names = FALSE)
+}
+
 #' Helper to Apply Default or Override Parameter Selections
 #'
 #' Populates a selection data frame with boolean columns for each study type,
@@ -559,9 +566,10 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
 #' @param state The current selections_state data frame.
 #' @param study_types Character vector of study type names.
 #' @param ns The module namespace function.
+#' @param eligible Parameter availability by study type, in the same order as `state`.
 #' @return A `tags$div` containing the matrix table.
 #' @noRd
-.build_matrix_html <- function(state, study_types, ns) {
+.build_matrix_html <- function(state, study_types, ns, eligible) {
   params_meta <- state %>%
     select(PKNCA, PPTESTCD, PPTEST, TYPE, sort_order) %>%
     distinct(PKNCA, .keep_all = TRUE) %>%
@@ -634,6 +642,7 @@ parameter_selection_server <- function(id, processed_pknca_data, parameter_overr
             class = "param-matrix-checkbox",
             id = ns(cb_id),
             checked = if (is_checked) NA else NULL,
+            disabled = if (!eligible[[st]][match(pknca_code, eligible$PKNCA)]) NA else NULL,
             `data-study-type` = st,
             `data-pknca` = pknca_code,
             onclick = paste0(
