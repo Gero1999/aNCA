@@ -385,8 +385,11 @@ PKNCA_update_data_object <- function( # nolint: object_name_linter
     data$intervals <- select(data$intervals, -any_of("VOLUME"))
   }
 
+  data$units <- .normalize_pknca_units(data$units)
+
   # Apply custom units table
   if (!is.null(custom_units_table)) {
+    custom_units_table <- .normalize_pknca_units(custom_units_table)
     common_cols <- intersect(names(data$units), names(custom_units_table))
     by_cols <- setdiff(common_cols, c("PPSTRESU", "PPSTRES", "conversion_factor"))
     data$units <- rows_update(
@@ -728,6 +731,20 @@ PKNCA_build_units_table <- function(o_conc, o_dose) { # nolint
       any_of(c(group_conc_cols, group_dose_cols)),
       PPTESTCD, PPORRESU, PPSTRESU, conversion_factor
     )
+}
+
+# Use the same parameter name for unit settings and the interval flags.
+.normalize_pknca_units <- function(units) {
+  vss_names <- c(PKNCA_PARAMETER_RENAMES[["vss.obs"]], "vss.obs")
+  preferred <- intersect(vss_names, names(PKNCA::get.interval.cols()))[1L]
+  old <- units$PPTESTCD %in% setdiff(vss_names, preferred)
+  if (is.na(preferred) || !any(old)) return(units)
+
+  aliases <- units[old, , drop = FALSE]
+  aliases$PPTESTCD <- preferred
+  units <- units[!old, , drop = FALSE]
+  keys <- setdiff(names(units), c("PPSTRESU", "PPSTRES", "conversion_factor"))
+  bind_rows(units, anti_join(aliases, units, by = keys))
 }
 
 #' Ensure Unit Columns Exist in PKNCA Object

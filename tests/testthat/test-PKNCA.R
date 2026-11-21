@@ -575,6 +575,28 @@ describe("PKNCA_update_data_object", {
 nca_results <- PKNCA_calculate_nca(pknca_data)
 
 describe("PKNCA_calculate_nca", {
+  it("applies saved observed VSS unit overrides across PKNCA parameter names", {
+    example <- subset(adnca_example, USUBJID == "S1-01" & PCSPEC == "SERUM" & PARAM == "DrugA")
+    data <- PKNCA_create_data_object(example)
+    preferred <- intersect(c("vss.inf.obs", "vss.obs"), names(PKNCA::get.interval.cols()))[1L]
+    units <- data$units[data$units$PPTESTCD == preferred, ]
+    units$PPTESTCD <- "vss.obs"
+    units$PPSTRESU <- "mL"
+    units$conversion_factor <- 1000
+    selections <- setNames(list("vss.obs"), unique(.derive_study_types(data)$type))
+    updated <- PKNCA_update_data_object(
+      data, method = "lin up/log down", selected_analytes = "DrugA",
+      selected_profile = unique(example$ATPTREF), selected_pcspec = "SERUM",
+      parameter_selections = selections, custom_units_table = units
+    )
+
+    expect_no_warning(result <- PKNCA_calculate_nca(updated))
+    vss <- subset(result$result, translate_terms(PPTESTCD) == "VSSO" & is.finite(PPORRES))
+    expect_gt(nrow(vss), 0L)
+    expect_equal(vss$PPSTRESU, rep("mL", nrow(vss)))
+    expect_equal(vss$PPSTRES, 1000 * vss$PPORRES)
+  })
+
   it("retains one result per parameter after start imputation with method metadata", {
     example <- subset(adnca_example, USUBJID == "S1-01" & PCSPEC == "SERUM" & PARAM == "DrugA")
     data <- PKNCA_create_data_object(example)

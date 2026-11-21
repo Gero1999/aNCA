@@ -49,4 +49,9 @@ describe("translate_terms", {
     result <- translate_terms(input_terms)
     expect_equal(result, expected_output)
   })
+
+  it("uses the same CDISC code for both PKNCA names for observed VSS", {
+    expect_equal(translate_terms(c("vss.obs", "vss.inf.obs")), rep("VSSO", 2))
+    expect_equal(translate_terms("VSSO", "PPTESTCD", "PKNCA"), "vss.obs")
+  })
 })

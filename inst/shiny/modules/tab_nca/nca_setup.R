@@ -158,7 +158,7 @@ nca_setup_server <- function(id, data, adnca_data, extra_group_vars, settings_ov
     observeEvent(imported_settings(), {
       req(imported_settings()$units, nrow(imported_settings()$units) > 0)
 
-      imported_units <- imported_settings()$units
+      imported_units <- aNCA:::.normalize_pknca_units(imported_settings()$units)
       has_full_units <- all(c("PPORRESU", "conversion_factor") %in% names(imported_units))
 
       if (has_full_units) {

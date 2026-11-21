@@ -238,6 +238,7 @@ update_main_intervals <- function(
   }
 
   all_pknca_params <- setdiff(names(PKNCA::get.interval.cols()), c("start", "end"))
+  renamed_params <- PKNCA_PARAMETER_RENAMES[PKNCA_PARAMETER_RENAMES %in% all_pknca_params]
 
   study_types_df <- .derive_study_types(data)
 
@@ -257,6 +258,8 @@ update_main_intervals <- function(
     for (study_type in names(parameter_selections)) {
       params_for_type <- parameter_selections[[study_type]]
       if (length(params_for_type) > 0) {
+        old <- params_for_type %in% names(renamed_params)
+        params_for_type[old] <- unname(renamed_params[params_for_type[old]])
         updated_intervals <- updated_intervals %>%
           mutate(across(
             .cols = all_of(params_for_type),

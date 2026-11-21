@@ -473,6 +473,15 @@ tab_nca_server <- function(id, pknca_data, extra_group_vars, settings_override,
     return(NULL)
   }
 
+  empty_interval <- "^Error with interval (.+): No data for interval$"
+  if (grepl(empty_interval, msg)) {
+    interval <- sub(empty_interval, "\\1", msg)
+    msg <- paste0(
+      "NCA skipped interval ", interval, " because it has no eligible concentration samples. ",
+      "Check the sample times and any NCA exclusion reasons."
+    )
+  }
+
   # Warning about FREXINT, RCAMINT for non-urine (partial intervals)
   # TODO: At some point these parameters may only be made available for urine data,
   # so this warning may need to be rephrased or removed.

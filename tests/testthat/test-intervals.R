@@ -334,6 +334,18 @@ describe("update_main_intervals", {
     expect_true(all(profile_3[expected_false_3] == FALSE))
   })
 
+  it("uses the registered VSSO name for a saved vss.obs selection", {
+    result <- update_main_intervals(
+      data, list(`Single Extravascular` = "vss.obs"), start_impute = FALSE
+    )
+    vss_names <- intersect(c("vss.inf.obs", "vss.obs"), all_pknca_params)
+    expect_true(all(result$intervals[[vss_names[1L]]][result$intervals$USUBJID == 1]))
+    expect_false(any(result$intervals[[vss_names[1L]]][result$intervals$USUBJID == 3]))
+    if (length(vss_names) == 2L) {
+      expect_false(any(result$intervals[[vss_names[2L]]]))
+    }
+  })
+
   it("handles partial AUCs (int_parameters) creating proper intervals for each", {
     int_parameters <- data.frame(
       parameter = "AUCINT",
