@@ -1,3 +1,4 @@
+# Developer reference for export checks and their regression tests.
 version: 1
 requirements:
   - id: standard_output_structure

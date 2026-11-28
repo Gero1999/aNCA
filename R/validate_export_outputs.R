@@ -263,31 +263,13 @@ validate_export_outputs <- function(output,
                                     obj_names = NULL,
                                     metadata = metadata_nca_variables,
                                     grouping_vars = character(0)) {
-  spec <- .read_export_validation_spec()
-  spec_errors <- .validate_export_spec(spec)
-  spec_findings <- lapply(spec_errors, function(message) {
-    .export_finding_row(
-      "export-validation.yml", NA_character_, "validation_spec", "error",
-      "a complete controlled validation specification", "invalid specification", message
-    )
-  })
   if (is.null(output) || !is.list(output) || length(output) == 0) {
-    if (length(spec_findings) == 0) return(.export_empty_findings())
-    return(do.call(rbind, spec_findings))
+    return(.export_empty_findings())
   }
 
-  class_findings <- if (.export_validator_enabled("standard_output_structure", spec)) {
-    .walk_export_outputs(output, obj_names, path = "")
-  } else {
-    list()
-  }
-  cdisc_findings <- if (.export_validator_enabled("cdisc_schema", spec)) {
-    .export_cdisc_findings(output, obj_names, metadata, grouping_vars)
-  } else {
-    .export_empty_findings()
-  }
-
-  parts <- c(spec_findings, class_findings, list(cdisc_findings))
+  class_findings <- .walk_export_outputs(output, obj_names, path = "")
+  cdisc_findings <- .export_cdisc_findings(output, obj_names, metadata, grouping_vars)
+  parts <- c(class_findings, list(cdisc_findings))
   parts <- Filter(function(df) !is.null(df) && nrow(df) > 0, parts)
   if (length(parts) == 0) return(.export_empty_findings())
 

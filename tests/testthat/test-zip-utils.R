@@ -687,7 +687,6 @@ describe("export validation with installed-package visibility", {
     app_env <- new.env(parent = baseenv())
     app_env$`%||%` <- rlang::`%||%`
     app_env$setNames <- stats::setNames
-    app_env$validate_export_outputs <- validate_export_outputs
     app_env$generate_pre_specs <- generate_pre_specs
     source(system.file("shiny/functions/zip-utils.R", package = "aNCA"), local = app_env)
     session <- test_export_session(list(exploration = list()))

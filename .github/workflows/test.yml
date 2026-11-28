@@ -68,6 +68,9 @@ jobs:
             local::.
             any::devtools
 
+      - name: Check export validation documentation
+        run: Rscript --vanilla .github/validation/check-export-validation.R
+
       - name: Run tests
         shell: Rscript {0}
         env:
