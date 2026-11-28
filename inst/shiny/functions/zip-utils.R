@@ -739,10 +739,7 @@ prepare_export_files <- function(target_dir,
     }
   }
 
-  # Validate every output that will be written before any file is created:
-  # object-class checks on all selected outputs and value-level data-type
-  # checks on the selected CDISC datasets. Aborts the save on error-severity
-  # findings so non-conforming data is never written (cf. 21 CFR 11.10(a)).
+  # Check selected outputs before writing files. Stop the export on any error finding.
   .validate_outputs_pre_export(
     export_list, obj_names, input, res_nca, progress, session, grouping_vars
   )

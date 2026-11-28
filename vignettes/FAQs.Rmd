@@ -85,7 +85,7 @@ If you'd like this feature built into the app (an option to choose nominal/actua
 <details>
 <summary><strong>How is the project validated and what about CDISC outputs?</strong></summary>
 
-You can see our current validations and future plan in the [validations page](https://pharmaverse.github.io/aNCA/articles/validations.html)
+Before saving selected CDISC datasets, aNCA checks column types and lengths against its metadata and reports validation limits for custom fields. The [validation page](https://pharmaverse.github.io/aNCA/articles/validations.html) describes the automated tests and links to the historical validation report.
 </details>
 
 

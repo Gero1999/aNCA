@@ -104,9 +104,7 @@ describe("prepare_export_files validation gate", {
   })
 
   it("blocks all selected artifacts when one selected CDISC dataset is invalid", {
-    # SAT evidence for the 21 CFR §11.10(a) pre-export integrity control:
-    # an invalid selected artifact must prevent every selected artifact from
-    # being written, including otherwise-valid outputs.
+    # A validation error in one selected output stops the whole export.
     target_dir <- tempfile("anca-export-")
     dir.create(target_dir)
 
